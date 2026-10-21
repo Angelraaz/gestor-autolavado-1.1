@@ -108,8 +108,10 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       email: 'admin@portanet.com.ve',
       nombre: 'Ing. Carlos Mendoza',
       rolId: 'admin_maestro',
+      role: 'admin',
       titulo: 'Administrador Maestro',
-      avatar: 'CM'
+      avatar: 'CM',
+      allowedTabs: ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles']
     },
     pass: 'admin123'
   },
@@ -119,8 +121,10 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       email: 'autolavado@portanet.com.ve',
       nombre: 'Jhonny Rivas',
       rolId: 'sup_autolavado',
+      role: 'lavado',
       titulo: 'Supervisor Autolavado',
-      avatar: 'JR'
+      avatar: 'JR',
+      allowedTabs: ['autolavado']
     },
     pass: 'lavado123'
   },
@@ -130,8 +134,10 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       email: 'detailing@portanet.com.ve',
       nombre: 'Marcos Villegas',
       rolId: 'sup_detailing',
+      role: 'detailing',
       titulo: 'Supervisor Detailing',
-      avatar: 'MV'
+      avatar: 'MV',
+      allowedTabs: ['detailing']
     },
     pass: 'detail123'
   },
@@ -141,8 +147,10 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       email: 'mecanica@portanet.com.ve',
       nombre: 'Alexis González',
       rolId: 'sup_mecanica',
+      role: 'mecanica',
       titulo: 'Supervisor Mecánica y Aceite',
-      avatar: 'AG'
+      avatar: 'AG',
+      allowedTabs: ['mecanica', 'autocool']
     },
     pass: 'mecanica123'
   },
@@ -152,8 +160,10 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       email: 'caja@portanet.com.ve',
       nombre: 'Daniela Salazar',
       rolId: 'cajero',
+      role: 'cajera',
       titulo: 'Cajera & Facturación',
-      avatar: 'DS'
+      avatar: 'DS',
+      allowedTabs: ['clientes_caja']
     },
     pass: 'caja123'
   }

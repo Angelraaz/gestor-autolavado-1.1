@@ -162,6 +162,8 @@ export interface Commission {
 
 export type RoleId = 'admin_maestro' | 'sup_autolavado' | 'sup_mecanica' | 'sup_detailing' | 'cajero';
 
+export type SupabaseRole = 'admin' | 'lavado' | 'detailing' | 'mecanica' | 'cajera';
+
 export interface UserRole {
   id: RoleId;
   nombre: string;
@@ -185,8 +187,10 @@ export interface AuthUser {
   email: string;
   nombre: string;
   rolId: RoleId;
+  role: SupabaseRole;
   titulo: string;
   avatar: string;
+  allowedTabs: string[];
 }
 
 export interface DailyClosure {

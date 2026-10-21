@@ -34,6 +34,7 @@ import {
   AuthUser
 } from './types';
 import { ShieldAlert } from 'lucide-react';
+import { supabase, fetchUserRoleFromSupabase, buildAuthUser } from './utils/supabase';
 
 export default function App() {
   // Authentication session
@@ -98,6 +99,48 @@ export default function App() {
   useEffect(() => {
     StorageService.saveAuthSession(authUser);
   }, [authUser]);
+
+  // Synchronize and listen for real-time Supabase Auth state changes
+  useEffect(() => {
+    let isMounted = true;
+
+    // Check active session on initial load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user && isMounted) {
+        const { role } = await fetchUserRoleFromSupabase(session.user.id, session.user.email);
+        const user = buildAuthUser(session.user, role);
+        setAuthUser(user);
+      }
+    });
+
+    // Real-time listener for sign in / sign out / token refreshes
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user && isMounted) {
+        const { role } = await fetchUserRoleFromSupabase(session.user.id, session.user.email);
+        const user = buildAuthUser(session.user, role);
+        setAuthUser(user);
+      } else if (event === 'SIGNED_OUT') {
+        if (isMounted) setAuthUser(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Automatic RBAC alignment: route user immediately to their permitted modules
+  useEffect(() => {
+    if (authUser) {
+      const allowed = authUser.allowedTabs || ['autolavado'];
+      if (!allowed.includes(activeTab)) {
+        setActiveTab(allowed[0] || 'autolavado');
+      }
+    }
+  }, [authUser, activeTab]);
 
   // Persist state changes
   useEffect(() => {
@@ -170,17 +213,11 @@ export default function App() {
     return t.tipo === 'Ingreso' ? acc + Number(t.montoUSD) : acc - Number(t.montoUSD);
   }, 0);
 
-  // Check RBAC permission for current tab
+  // Check RBAC permission for current tab based on Supabase role
   const hasPermissionForCurrentTab = () => {
     if (!authUser) return false;
-    if (activeRole.id === 'admin_maestro') return true;
-    if (activeTab === 'autolavado') return activeRole.permisos.autolavado;
-    if (activeTab === 'detailing') return activeRole.permisos.detailing;
-    if (activeTab === 'mecanica') return activeRole.permisos.mecanica;
-    if (activeTab === 'autocool') return activeRole.permisos.autoCool;
-    if (activeTab === 'clientes_caja') return activeRole.permisos.clientesCaja;
-    if (activeTab === 'usuarios_roles') return true;
-    return true;
+    if (authUser.role === 'admin' || authUser.rolId === 'admin_maestro') return true;
+    return authUser.allowedTabs ? authUser.allowedTabs.includes(activeTab) : false;
   };
 
   // --- AUTOLAVADO HANDLERS ---
@@ -578,9 +615,14 @@ export default function App() {
     addToast('Permiso de rol actualizado');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error signing out from Supabase:', err);
+    }
     setAuthUser(null);
-    addToast('Sesión cerrada correctamente', 'info');
+    addToast('Sesión cerrada correctamente en Supabase', 'info');
   };
 
   return (
@@ -692,6 +734,7 @@ export default function App() {
                   <UsuariosRolesTab
                     roles={roles}
                     activeRoleId={authUser.rolId}
+                    authUser={authUser}
                     onSelectRole={() => {}}
                     onTogglePermission={handleTogglePermission}
                   />

@@ -68,7 +68,24 @@ export const StorageService = {
   getRoles: (): UserRole[] => safeGet(STORAGE_KEYS.ROLES, INITIAL_ROLES),
   saveRoles: (roles: UserRole[]) => safeSet(STORAGE_KEYS.ROLES, roles),
 
-  getAuthSession: (): AuthUser | null => safeGet(STORAGE_KEYS.AUTH_SESSION, null),
+  getAuthSession: (): AuthUser | null => {
+    const session = safeGet<AuthUser | null>(STORAGE_KEYS.AUTH_SESSION, null);
+    if (!session) return null;
+    if (!session.role) {
+      const roleMap: Record<string, 'admin' | 'lavado' | 'detailing' | 'mecanica' | 'cajera'> = {
+        admin_maestro: 'admin',
+        sup_autolavado: 'lavado',
+        sup_detailing: 'detailing',
+        sup_mecanica: 'mecanica',
+        cajero: 'cajera'
+      };
+      session.role = (session.rolId && roleMap[session.rolId]) || 'admin';
+    }
+    if (!session.allowedTabs || session.allowedTabs.length === 0) {
+      session.allowedTabs = ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles'];
+    }
+    return session;
+  },
   saveAuthSession: (user: AuthUser | null) => safeSet(STORAGE_KEYS.AUTH_SESSION, user),
 
   getWashJobs: (): WashJob[] => safeGet(STORAGE_KEYS.WASH, INITIAL_WASH_JOBS),

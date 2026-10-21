@@ -15,7 +15,8 @@ import {
   Clock,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert
 } from 'lucide-react';
 import { AuthUser } from '../types';
 
@@ -51,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   const year = String(now.getFullYear()).slice(-2);
   const compactDate = `${day}/${month}/${year}`;
 
-  const tabs = [
+  const allTabs = [
     {
       id: 'autolavado',
       label: '1. Autolavado General',
@@ -96,12 +97,40 @@ export const Header: React.FC<HeaderProps> = ({
     }
   ];
 
+  // Role-Based Access Control (RBAC): filter tabs based on authenticated Supabase role
+  const userRole = authUser?.role || 'admin';
+  const allowedTabsList = authUser?.allowedTabs || ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles'];
+  const visibleTabs = allTabs.filter((tab) => {
+    if (userRole === 'admin' || authUser?.rolId === 'admin_maestro') {
+      return true;
+    }
+    return allowedTabsList.includes(tab.id);
+  });
+
   const handleTabSelect = (tabId: string) => {
     setActiveTab(tabId);
     setIsMobileMenuOpen(false);
   };
 
-  const activeTabObj = tabs.find((t) => t.id === activeTab) || tabs[0];
+  const activeTabObj = visibleTabs.find((t) => t.id === activeTab) || visibleTabs[0] || allTabs[0];
+
+  // Human readable role tag
+  const getRoleBadgeColor = (role?: string) => {
+    switch (role?.toLowerCase()) {
+      case 'admin':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+      case 'lavado':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
+      case 'detailing':
+        return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+      case 'mecanica':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+      case 'cajera':
+        return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+      default:
+        return 'bg-zinc-800 text-zinc-300 border-zinc-700';
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-zinc-950/95 dark:bg-[#090D15]/95 backdrop-blur-md border-b border-zinc-800 transition-colors">
@@ -131,8 +160,12 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[10px] sm:text-xs font-black tracking-wider uppercase px-2 py-0.5 bg-red-600 text-white rounded shadow-sm shadow-red-950/40">
                 AJRC SERVICIOS
               </span>
-              <span className="hidden sm:inline-block text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded">
-                Taller
+              <span
+                className={`text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded border ${getRoleBadgeColor(
+                  authUser?.role
+                )}`}
+              >
+                {String(authUser?.role || authUser?.rolId || 'ADMIN').toUpperCase()}
               </span>
             </div>
 
@@ -185,7 +218,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Export to Netlify (hidden on very small screens to give room) */}
+          {/* Export to Netlify */}
           <button
             onClick={onOpenExportModal}
             className="hidden sm:flex px-2.5 sm:px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition-colors items-center gap-1.5 whitespace-nowrap"
@@ -196,21 +229,25 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="md:hidden">HTML</span>
           </button>
 
-          {/* Current Logged-in User Badge */}
+          {/* Current Logged-in Supabase User Badge */}
           <div className="flex items-center gap-1.5 pl-1 sm:border-l border-zinc-800">
             <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-[11px] text-zinc-200">
-              {authUser.avatar}
+              {authUser?.avatar || 'US'}
             </div>
             <div className="hidden sm:block text-left text-xs leading-tight">
-              <div className="font-bold text-white truncate max-w-[100px]">{authUser.nombre.split(' ')[0]}</div>
-              <div className="text-[10px] text-red-400 truncate max-w-[100px]">{authUser.titulo}</div>
+              <div className="font-bold text-white truncate max-w-[110px]" title={authUser?.email || ''}>
+                {authUser?.nombre ? authUser.nombre.split(' ')[0] : 'Usuario'}
+              </div>
+              <div className="text-[10px] text-red-400 truncate max-w-[110px]">
+                {authUser?.titulo || 'Portanet C.A.'}
+              </div>
             </div>
 
             {/* Logout Button */}
             <button
               onClick={onLogout}
               className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 rounded-lg transition-colors"
-              title="Cerrar Sesión"
+              title="Cerrar Sesión en Supabase"
               aria-label="Cerrar sesión"
             >
               <LogOut className="w-4 h-4" />
@@ -257,10 +294,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Desktop Horizontal Navigation (Hidden on Mobile < md) */}
+      {/* Desktop Horizontal Navigation - RBAC Filtered (Hidden on Mobile < md) */}
       <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6">
         <nav className="flex items-center space-x-1 overflow-x-auto py-2 text-xs font-medium no-scrollbar border-t border-zinc-800/80">
-          {tabs.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
 
@@ -282,15 +319,16 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
       </div>
 
-      {/* Mobile Slide-Down / Dropdown Menu (Vertical list on screens < md) */}
+      {/* Mobile Slide-Down / Dropdown Menu - RBAC Filtered (Vertical list on screens < md) */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-zinc-800 bg-zinc-950/98 backdrop-blur-xl px-4 py-4 space-y-3 shadow-2xl animate-in slide-in-from-top-2 duration-200">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-1">
-            Secciones Operativas de Portanet C.A.
+          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-1">
+            <span>Módulos Autorizados ({visibleTabs.length})</span>
+            <span className="text-red-400 font-mono">Rol: {authUser?.role || 'admin'}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-1.5">
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
 
