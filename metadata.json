@@ -1,0 +1,6 @@
+{
+  "name": "Portanet C.A. - Sistema de Gestión Automotriz",
+  "description": "Plataforma integral de gestión operativa y administrativa para Portanet C.A.: Autolavado, Detailing, Cambio de Aceite, Mecánica Ligera, Zona Auto Cool, Clientes, Caja e Inventario.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

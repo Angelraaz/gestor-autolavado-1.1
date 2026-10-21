@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portanet C.A. - Sistema de Gestión Automotriz</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#DC2626',
+              redHover: '#B91C1C',
+              dark: '#0A0E17',
+              surface: '#111827',
+              card: '#1F2937',
+              border: '#374151'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0A0E17; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #DC2626; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-[#090D15] text-zinc-100 min-h-screen flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors">
+
+  <!-- LOGIN MODAL / GATE -->
+  <div id="loginGate" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="text-center space-y-3">
+        <!-- Car Front Silhouette -->
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-red-600 flex items-center justify-center text-white shadow-xl shadow-red-950/60 ring-4 ring-red-600/20">
+          <svg class="w-10 h-10 fill-current text-white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z" />
+            <circle cx="7.5" cy="14.5" r="1.5" />
+            <circle cx="16.5" cy="14.5" r="1.5" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-black tracking-tight text-white uppercase">PORTANET C.A.</h2>
+          <p class="text-xs text-zinc-400">Control Interno de Operaciones y Servicios</p>
+        </div>
+      </div>
+
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Correo Electrónico</label>
+          <input id="loginEmail" type="email" required placeholder="admin@portanet.com.ve" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-100 focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-zinc-400 mb-1">Contraseña</label>
+          <input id="loginPassword" type="password" required placeholder="••••••••" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-100 focus:outline-none focus:border-red-500">
+        </div>
+        <button type="submit" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-red-950/40">
+          Iniciar Sesión
+        </button>
+      </form>
+
+      <div class="pt-3 border-t border-zinc-800 space-y-2 text-xs">
+        <span class="text-[10px] text-zinc-500 uppercase font-bold block">Acceso Rápido Demo:</span>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+          <button onclick="demoLogin('admin@portanet.com.ve', 'Admin Maestro')" class="p-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-left text-zinc-300">
+            👑 Admin Maestro
+          </button>
+          <button onclick="demoLogin('autolavado@portanet.com.ve', 'Sup. Lavado')" class="p-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-left text-zinc-300">
+            🚗 Sup. Lavado
+          </button>
+          <button onclick="demoLogin('detailing@portanet.com.ve', 'Sup. Detailing')" class="p-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-left text-zinc-300">
+            ✨ Sup. Detailing
+          </button>
+          <button onclick="demoLogin('mecanica@portanet.com.ve', 'Sup. Mecánica')" class="p-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-left text-zinc-300">
+            🛢️ Sup. Mecánica
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP BAR -->
+  <header class="sticky top-0 z-40 bg-[#0E1524]/95 backdrop-blur border-b border-zinc-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Date Header -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white shadow-md shadow-red-950/50">
+          <svg class="w-6 h-6 fill-current text-white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z" />
+            <circle cx="7.5" cy="14.5" r="1.5" />
+            <circle cx="16.5" cy="14.5" r="1.5" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <span class="text-base sm:text-lg font-black tracking-tight text-white">PORTANET C.A.</span>
+            <span class="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 bg-red-600 text-white rounded shadow-sm shadow-red-950/40">AJRC SERVICIOS</span>
+            <span class="hidden sm:inline-block text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded">Taller</span>
+          </div>
+          <!-- Formatted Date & Shift -->
+          <div class="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium mt-0.5">
+            <span id="headerDateFormatted" class="text-zinc-200 font-mono font-bold tracking-wide">20/10/26</span>
+            <span>·</span>
+            <span class="text-emerald-400 font-semibold">Turno Diurno Activo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick workshop status / Actions -->
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-4 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs">
+          <div><span class="text-zinc-500">Patio:</span> <span id="headerQueueCount" class="font-mono font-bold text-red-400">0</span></div>
+          <span class="text-zinc-700">|</span>
+          <div><span class="text-zinc-500">Caja Neta:</span> <span id="headerCashTotal" class="font-mono font-bold text-emerald-400 tabular-nums">$0.00</span></div>
+        </div>
+
+        <button onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs text-zinc-300 hover:text-white" title="Modo Claro / Oscuro">
+          🌓
+        </button>
+
+        <div class="flex items-center gap-2 pl-2 border-l border-zinc-800 text-xs">
+          <span id="userBadge" class="font-bold text-white hidden sm:inline">Admin Maestro</span>
+          <button onclick="logout()" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px]">
+            Salir
+          </button>
+        </div>
+
+        <!-- Mobile Hamburger Button (< md) -->
+        <button onclick="toggleMobileMenu()" class="md:hidden w-8 h-8 rounded-lg bg-red-600/15 border border-red-600/40 text-red-400 flex items-center justify-center font-bold text-base" title="Menú">
+          ☰
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Mobile Menu Drawer (< md) -->
+    <div id="mobileMenu" class="hidden md:hidden border-t border-zinc-800 bg-zinc-950 px-4 py-3 space-y-1.5 shadow-xl">
+      <div class="text-[10px] uppercase font-bold text-zinc-500 mb-1">Secciones de Portanet:</div>
+      <button onclick="switchTab('autolavado'); toggleMobileMenu();" class="w-full text-left p-2.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-between">
+        <span>🚗 1. Autolavado General</span>
+        <span class="text-zinc-500 text-[10px]">Colas & Insumos</span>
+      </button>
+      <button onclick="switchTab('detailing'); toggleMobileMenu();" class="w-full text-left p-2.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-between">
+        <span>✨ 2. Detailing & Pintura</span>
+        <span class="text-zinc-500 text-[10px]">Corrección & Cerámico</span>
+      </button>
+      <button onclick="switchTab('mecanica'); toggleMobileMenu();" class="w-full text-left p-2.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-between">
+        <span>🛢️ 3. Cambio de Aceite & Mecánica</span>
+        <span class="text-zinc-500 text-[10px]">Lubricación & Repuestos</span>
+      </button>
+      <button onclick="switchTab('autocool'); toggleMobileMenu();" class="w-full text-left p-2.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-between">
+        <span>❄️ 4. Zona Auto Cool (A/C)</span>
+        <span class="text-zinc-500 text-[10px]">Presiones & Diagnóstico</span>
+      </button>
+      <button onclick="switchTab('clientes_caja'); toggleMobileMenu();" class="w-full text-left p-2.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-between">
+        <span>👥 5. Clientes & Caja Diaria</span>
+        <span class="text-zinc-500 text-[10px]">Arqueo & Cierre</span>
+      </button>
+      <button onclick="switchTab('usuarios_roles'); toggleMobileMenu();" class="w-full text-left p-2.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-between">
+        <span>🔒 6. Seguridad & Roles</span>
+        <span class="text-zinc-500 text-[10px]">Permisos RBAC</span>
+      </button>
+    </div>
+
+    <!-- NAVIGATION TABS (Desktop >= md) -->
+    <div class="hidden md:block max-w-7xl mx-auto px-4 sm:px-6">
+      <nav class="flex items-center space-x-1 overflow-x-auto py-2 text-xs font-medium no-scrollbar border-t border-zinc-800/80">
+        <button onclick="switchTab('autolavado')" id="tab-btn-autolavado" class="tab-btn active px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-white bg-red-600 font-semibold">
+          🚗 1. Autolavado General
+        </button>
+        <button onclick="switchTab('detailing')" id="tab-btn-detailing" class="tab-btn px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-zinc-400 hover:text-white hover:bg-zinc-800/60">
+          ✨ 2. Detailing & Pintura
+        </button>
+        <button onclick="switchTab('mecanica')" id="tab-btn-mecanica" class="tab-btn px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-zinc-400 hover:text-white hover:bg-zinc-800/60">
+          🛢️ 3. Cambio de Aceite & Mecánica
+        </button>
+        <button onclick="switchTab('autocool')" id="tab-btn-autocool" class="tab-btn px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-zinc-400 hover:text-white hover:bg-zinc-800/60">
+          ❄️ 4. Zona Auto Cool (A/C)
+        </button>
+        <button onclick="switchTab('clientes_caja')" id="tab-btn-clientes_caja" class="tab-btn px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-zinc-400 hover:text-white hover:bg-zinc-800/60">
+          👥 5. Clientes & Caja Diaria
+        </button>
+        <button onclick="switchTab('usuarios_roles')" id="tab-btn-usuarios_roles" class="tab-btn px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-zinc-400 hover:text-white hover:bg-zinc-800/60">
+          🔒 6. Seguridad & Roles
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+    <!-- TAB 1: AUTOLAVADO GENERAL -->
+    <section id="tab-autolavado" class="tab-pane space-y-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">🚗 1. Autolavado General</h2>
+          <p class="text-xs text-zinc-400">Control de cola e inventario de insumos (champú, silicona, cera, ambientadores).</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openModal('modalAddWash')" class="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition-colors">
+            + Ingresar Vehículo a Cola
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex flex-col min-h-[380px]">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-zinc-800">
+            <span class="text-xs font-bold uppercase text-zinc-300">1. En Espera</span>
+            <span id="count-espera" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">0</span>
+          </div>
+          <div id="col-espera" class="space-y-3 flex-1 overflow-y-auto"></div>
+        </div>
+
+        <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex flex-col min-h-[380px]">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-zinc-800">
+            <span class="text-xs font-bold uppercase text-zinc-300">2. En Proceso (Lavado/Chasis)</span>
+            <span id="count-proceso" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">0</span>
+          </div>
+          <div id="col-proceso" class="space-y-3 flex-1 overflow-y-auto"></div>
+        </div>
+
+        <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex flex-col min-h-[380px]">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-zinc-800">
+            <span class="text-xs font-bold uppercase text-zinc-300">3. Listos para Cobro & Entrega</span>
+            <span id="count-listos" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">0</span>
+          </div>
+          <div id="col-listos" class="space-y-3 flex-1 overflow-y-auto"></div>
+        </div>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-white mb-3">🧴 Insumos Propios de Autolavado</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="text-zinc-400 uppercase bg-zinc-950 border-y border-zinc-800">
+              <tr>
+                <th class="py-2.5 px-3">Código</th>
+                <th class="py-2.5 px-3">Insumo</th>
+                <th class="py-2.5 px-3">Categoría</th>
+                <th class="py-2.5 px-3 text-right">Stock</th>
+                <th class="py-2.5 px-3 text-right">Mínimo</th>
+                <th class="py-2.5 px-3 text-center">Ajuste</th>
+              </tr>
+            </thead>
+            <tbody id="washSuppliesTbody" class="divide-y divide-zinc-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DETAILING -->
+    <section id="tab-detailing" class="tab-pane hidden space-y-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">✨ 2. Zona Detailing & Pintura</h2>
+          <p class="text-xs text-zinc-400">Corrección microscópica, cerámicos 9H e inventario de productos de estética.</p>
+        </div>
+        <button onclick="openModal('modalAddDetailing')" class="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition-colors">
+          + Nuevo Proyecto Detailing
+        </button>
+      </div>
+      <div id="detailingGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-white mb-3">✨ Productos & Químicos Propios de Detailing</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="text-zinc-400 uppercase bg-zinc-950 border-y border-zinc-800">
+              <tr>
+                <th class="py-2.5 px-3">Código</th>
+                <th class="py-2.5 px-3">Producto</th>
+                <th class="py-2.5 px-3">Categoría</th>
+                <th class="py-2.5 px-3 text-right">Stock</th>
+                <th class="py-2.5 px-3 text-right">Mínimo</th>
+                <th class="py-2.5 px-3 text-center">Ajuste</th>
+              </tr>
+            </thead>
+            <tbody id="detailingSuppliesTbody" class="divide-y divide-zinc-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MECÁNICA & ACEITE -->
+    <section id="tab-mecanica" class="tab-pane hidden space-y-8">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">🛢️ 3. Cambio de Aceite & Mecánica</h2>
+          <p class="text-xs text-zinc-400">Control de lubricación y stock de aceites con descuento automático al registrar servicio.</p>
+        </div>
+        <button onclick="openModal('modalAddMecanica')" class="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition-colors">
+          + Registrar Servicio Mecánica
+        </button>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-white mb-3">📦 Inventario de Aceites de Motor, Filtros & Repuestos</h3>
+        <div class="overflow-x-auto">
+          <!-- Desktop Table (>= md) -->
+          <table class="hidden md:table w-full text-left text-xs">
+            <thead class="text-zinc-400 uppercase bg-zinc-950 border-y border-zinc-800">
+              <tr>
+                <th class="py-3 px-3">Código</th>
+                <th class="py-3 px-3">Producto / Viscosidad</th>
+                <th class="py-3 px-3">Categoría</th>
+                <th class="py-3 px-3 text-right">Stock</th>
+                <th class="py-3 px-3 text-right">Mínimo</th>
+                <th class="py-3 px-3 text-center">Ajuste</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody" class="divide-y divide-zinc-800/60"></tbody>
+          </table>
+
+          <!-- Mobile Adaptive Cards (< md) -->
+          <div id="inventoryMobileCards" class="block md:hidden space-y-3"></div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-bold text-white mb-3">🛠️ Servicios Mecánicos Activos</h3>
+        <div id="mechanicsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: AUTO COOL -->
+    <section id="tab-autocool" class="tab-pane hidden space-y-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">❄️ 4. Zona Auto Cool (A/C)</h2>
+          <p class="text-xs text-zinc-400">Enfocada en presiones manométricas (Baja/Alta PSI), temperatura en rejilla (°C) y vacío.</p>
+        </div>
+        <button onclick="openModal('modalAddAutoCool')" class="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition-colors">
+          + Nueva Orden A/C
+        </button>
+      </div>
+      <div id="autoCoolGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </section>
+
+    <!-- TAB 5: CLIENTES & CAJA CON CIERRE DE DÍA -->
+    <section id="tab-clientes_caja" class="tab-pane hidden space-y-8">
+      <div class="flex items-center justify-between flex-wrap gap-4 pb-4 border-b border-zinc-800">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-tight">👥 5. Clientes, Caja Diaria & Cierre de Día</h2>
+          <p class="text-xs text-zinc-400">Arqueo en tiempo real y módulo para congelar operaciones del día.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="openCalculatorModal()" class="px-3.5 py-2 text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-amber-400 hover:text-amber-300 rounded-lg border border-zinc-700 shadow-sm transition-colors flex items-center gap-1.5" title="Abrir calculadora de caja">
+            <span>🧮 Calculadora</span>
+          </button>
+          <button onclick="openClosureModal()" class="px-4 py-2 text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-red-400 rounded-lg border border-red-900/60 shadow transition-colors flex items-center gap-2">
+            <span>🔒 Cierre de Jornada / Cierre de Día</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
+          <span class="text-xs text-zinc-400">Total Ingresos Hoy (USD)</span>
+          <div id="cajaIngresos" class="text-2xl font-bold text-emerald-400 font-mono tabular-nums mt-1">$0.00</div>
+        </div>
+        <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
+          <span class="text-xs text-zinc-400">Egresos / Gastos</span>
+          <div id="cajaEgresos" class="text-2xl font-bold text-red-400 font-mono tabular-nums mt-1">$0.00</div>
+        </div>
+        <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
+          <span class="text-xs text-zinc-400">Balance Neto</span>
+          <div id="cajaBalance" class="text-2xl font-bold text-white font-mono tabular-nums mt-1">$0.00</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-white mb-3">💵 Registrar Movimiento</h3>
+          <form onsubmit="handleNewTransaction(event)" class="space-y-3">
+            <div>
+              <label class="block text-[11px] text-zinc-400 uppercase mb-1">Tipo</label>
+              <select id="txTipo" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs">
+                <option value="Ingreso">🟢 Ingreso / Cobro</option>
+                <option value="Egreso">🔴 Egreso / Gasto</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-zinc-400 uppercase mb-1">Concepto</label>
+              <input id="txConcepto" type="text" required placeholder="Concepto..." class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] text-zinc-400 uppercase mb-1">Monto ($)</label>
+                <input id="txMonto" type="number" step="0.5" required placeholder="0.00" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs font-mono">
+              </div>
+              <div>
+                <label class="block text-[11px] text-zinc-400 uppercase mb-1">Método</label>
+                <select id="txMetodo" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs">
+                  <option value="Divisas / USD Efectivo">Divisas / USD Efectivo</option>
+                  <option value="Bolívares Efectivo">Bolívares Efectivo</option>
+                  <option value="Punto de Venta">Punto de Venta</option>
+                  <option value="Pago Móvil">Pago Móvil</option>
+                  <option value="Zelle / Transferencia">Zelle / Transferencia</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded transition-colors">
+              Guardar en Caja
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white">📋 Libro Diario de Caja</h3>
+          </div>
+          <div class="overflow-y-auto max-h-[340px] divide-y divide-zinc-800/80" id="txList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: ROLES -->
+    <section id="tab-usuarios_roles" class="tab-pane hidden space-y-6">
+      <div class="pb-4 border-b border-zinc-800">
+        <h2 class="text-xl font-bold text-white tracking-tight">🔒 Matriz de Seguridad y Permisos RBAC</h2>
+        <p class="text-xs text-zinc-400">Control de privilegios entre Administrador Maestro, supervisores y cajera.</p>
+      </div>
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <p class="text-sm text-zinc-300 leading-relaxed">
+          Portanet C.A. protege sus operaciones restringiendo el acceso por segmento según el inicio de sesión por correo electrónico del supervisor asignado.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: CIERRE DE DÍA / ARQUEO -->
+  <div id="modalClosure" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-lg w-full p-6 space-y-4 text-xs">
+      <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <h3 class="font-bold text-white text-base">🔒 Cierre de Jornada / Arqueo Diario</h3>
+        <button onclick="closeModal('modalClosure')" class="text-zinc-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <div class="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3 font-mono">
+        <div class="text-center font-bold text-white uppercase text-sm">PORTANET C.A. - RESUMEN DE ARQUEO</div>
+        <div class="grid grid-cols-3 gap-2 text-center py-2 bg-zinc-900 p-2 rounded">
+          <div><span class="text-[10px] text-zinc-400 block font-sans">Ingresos</span><span id="closeIngresos" class="text-emerald-400 font-bold">$0.00</span></div>
+          <div><span class="text-[10px] text-zinc-400 block font-sans">Egresos</span><span id="closeEgresos" class="text-red-400 font-bold">$0.00</span></div>
+          <div><span class="text-[10px] text-zinc-400 block font-sans">Neto</span><span id="closeNeto" class="text-white font-bold">$0.00</span></div>
+        </div>
+
+        <div class="space-y-1.5 pt-2 text-[11px] font-sans">
+          <div class="flex justify-between"><span>💵 Divisas USD Efectivo:</span> <span id="mDivisas" class="font-mono text-emerald-400">$0.00</span></div>
+          <div class="flex justify-between"><span>🇻🇪 Bolívares Efectivo:</span> <span id="mBs" class="font-mono text-blue-400">$0.00</span></div>
+          <div class="flex justify-between"><span>💳 Punto de Venta:</span> <span id="mPunto" class="font-mono text-purple-400">$0.00</span></div>
+          <div class="flex justify-between"><span>📲 Pago Móvil:</span> <span id="mPagoMovil" class="font-mono text-amber-400">$0.00</span></div>
+          <div class="flex justify-between"><span>⚡ Zelle / Transferencia:</span> <span id="mZelle" class="font-mono text-cyan-400">$0.00</span></div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="window.print()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-medium">
+          🖨️ Imprimir Reporte
+        </button>
+        <button onclick="confirmDailyClosure()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded shadow">
+          Congelar y Resetear Caja para Mañana
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CALCULADORA EMERGENTE DE CAJA -->
+  <div id="modalCalculator" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-sm w-full p-5 space-y-4 text-zinc-100 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 bg-red-600/20 text-red-500 rounded-lg text-sm">🧮</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Calculadora de Caja</h3>
+            <p class="text-[10px] text-zinc-400">Portanet C.A. · Arqueo</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modalCalculator')" class="w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center text-lg font-bold">&times;</button>
+      </div>
+
+      <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 space-y-1">
+        <div id="calcExpr" class="text-right text-[11px] font-mono text-zinc-500 h-4 truncate"></div>
+        <div id="calcDisplay" class="text-right text-3xl font-mono font-bold text-white tracking-tight tabular-nums overflow-x-auto">0</div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-2 text-sm font-semibold select-none">
+        <button onclick="calcClear()" class="h-11 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-red-400 font-bold active:scale-95 transition-all">AC</button>
+        <button onclick="calcBack()" class="h-11 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 active:scale-95 transition-all">⌫</button>
+        <button onclick="calcPercent()" class="h-11 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 active:scale-95 transition-all">%</button>
+        <button onclick="calcOp('/')" class="h-11 rounded-xl bg-zinc-800 text-amber-400 hover:bg-zinc-700 active:scale-95 transition-all text-base">÷</button>
+
+        <button onclick="calcNum('7')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">7</button>
+        <button onclick="calcNum('8')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">8</button>
+        <button onclick="calcNum('9')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">9</button>
+        <button onclick="calcOp('*')" class="h-11 rounded-xl bg-zinc-800 text-amber-400 hover:bg-zinc-700 active:scale-95 transition-all text-base">×</button>
+
+        <button onclick="calcNum('4')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">4</button>
+        <button onclick="calcNum('5')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">5</button>
+        <button onclick="calcNum('6')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">6</button>
+        <button onclick="calcOp('-')" class="h-11 rounded-xl bg-zinc-800 text-amber-400 hover:bg-zinc-700 active:scale-95 transition-all text-base">-</button>
+
+        <button onclick="calcNum('1')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">1</button>
+        <button onclick="calcNum('2')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">2</button>
+        <button onclick="calcNum('3')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">3</button>
+        <button onclick="calcOp('+')" class="h-11 rounded-xl bg-zinc-800 text-amber-400 hover:bg-zinc-700 active:scale-95 transition-all text-base">+</button>
+
+        <button onclick="calcSign()" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-zinc-300 active:scale-95 transition-all border border-zinc-800 text-xs">+/-</button>
+        <button onclick="calcNum('0')" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">0</button>
+        <button onclick="calcDot()" class="h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white active:scale-95 transition-all border border-zinc-800">.</button>
+        <button onclick="calcEquals()" class="h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold active:scale-95 transition-all text-base">=</button>
+      </div>
+
+      <div class="pt-1 flex items-center justify-between text-xs">
+        <button onclick="copyCalcResult()" class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px]">Copiar Valor</button>
+        <button onclick="applyCalcToTx()" class="text-[11px] text-red-400 font-semibold hover:text-red-300">Pegar en Monto Caja →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AGREGAR VEHÍCULO A LAVADO -->
+  <div id="modalAddWash" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <h3 class="font-bold text-white text-base">🚗 Ingreso a Cola de Lavado</h3>
+        <button onclick="closeModal('modalAddWash')" class="text-zinc-400 hover:text-white">&times;</button>
+      </div>
+      <form onsubmit="handleAddWash(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-zinc-400 uppercase mb-1">Placa (Opcional)</label>
+            <input id="washPlaca" type="text" placeholder="Ej. AC923EE (Opcional)" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 uppercase font-mono">
+          </div>
+          <div>
+            <label class="block text-[11px] text-zinc-400 uppercase mb-1">Precio ($)</label>
+            <input id="washPrecio" type="number" step="1" value="15" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 font-mono">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] text-zinc-400 uppercase mb-1">Vehículo / Modelo</label>
+          <input id="washModelo" type="text" required placeholder="Toyota Fortuner" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-[11px] text-zinc-400 uppercase mb-1">Paquete de Lavado</label>
+          <select id="washPaquete" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2">
+            <option value="Lavado Sencillo (Carrocería + Aspirado)">Lavado Sencillo (Carrocería + Aspirado)</option>
+            <option value="Lavado Especial Chasis & Motor">Lavado Especial Chasis & Motor</option>
+            <option value="Lavado Integral VIP (+ Cera Líquida)">Lavado Integral VIP (+ Cera Líquida)</option>
+          </select>
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeModal('modalAddWash')" class="px-4 py-2 bg-zinc-800 text-zinc-300 rounded">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded">Registrar en Cola</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-lg shadow-xl text-xs flex items-center gap-2 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+    <span id="toastIcon">✅</span>
+    <span id="toastMsg">Operación completada</span>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'portanet_standalone_v3_clean';
+    
+    let defaultData = {
+      isLoggedIn: false,
+      userRole: 'Admin Maestro',
+      theme: 'dark',
+      washJobs: [],
+      detailingJobs: [],
+      mechanicsJobs: [],
+      autoCoolJobs: [],
+      transactions: [],
+      washSupplies: [],
+      detailingSupplies: [],
+      inventory: []
+    };
+
+    let appData = defaultData;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) appData = JSON.parse(stored);
+    } catch(e) {}
+
+    function saveData() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch(e) {}
+    }
+
+    function showToast(msg, icon = '✅') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      document.getElementById('toastIcon').innerText = icon;
+      toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none'); }, 2600);
+    }
+
+    // Login system
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      appData.isLoggedIn = true;
+      appData.userRole = email.split('@')[0];
+      saveData();
+      checkLoginState();
+      showToast('Sesión iniciada con éxito');
+    }
+
+    function demoLogin(email, roleName) {
+      appData.isLoggedIn = true;
+      appData.userRole = roleName;
+      saveData();
+      checkLoginState();
+      showToast('Acceso demo: ' + roleName);
+    }
+
+    function logout() {
+      appData.isLoggedIn = false;
+      saveData();
+      checkLoginState();
+      showToast('Sesión cerrada');
+    }
+
+    function checkLoginState() {
+      const gate = document.getElementById('loginGate');
+      if (appData.isLoggedIn) {
+        gate.classList.add('hidden');
+        document.getElementById('userBadge').innerText = appData.userRole;
+      } else {
+        gate.classList.remove('hidden');
+      }
+    }
+
+    function toggleTheme() {
+      appData.theme = appData.theme === 'dark' ? 'light' : 'dark';
+      saveData();
+      applyTheme();
+    }
+
+    function applyTheme() {
+      if (appData.theme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('bg-[#090D15]', 'text-zinc-100');
+        document.body.classList.add('bg-zinc-100', 'text-zinc-900');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('bg-[#090D15]', 'text-zinc-100');
+        document.body.classList.remove('bg-zinc-100', 'text-zinc-900');
+      }
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-red-600', 'text-white', 'font-semibold');
+        btn.classList.add('text-zinc-400');
+      });
+      const p = document.getElementById('tab-' + tabId);
+      const b = document.getElementById('tab-btn-' + tabId);
+      if (p) p.classList.remove('hidden');
+      if (b) { b.classList.remove('text-zinc-400'); b.classList.add('bg-red-600', 'text-white', 'font-semibold'); }
+    }
+
+    function renderAutolavado() {
+      const colEspera = document.getElementById('col-espera');
+      const colProceso = document.getElementById('col-proceso');
+      const colListos = document.getElementById('col-listos');
+      colEspera.innerHTML = ''; colProceso.innerHTML = ''; colListos.innerHTML = '';
+      let cEsp = 0, cProc = 0, cList = 0;
+
+      if (appData.washJobs.length === 0) {
+        colEspera.innerHTML = '<div class="h-32 flex items-center justify-center text-zinc-500 text-xs">Sin vehículos en espera</div>';
+        colProceso.innerHTML = '<div class="h-32 flex items-center justify-center text-zinc-500 text-xs">Bahías libres</div>';
+        colListos.innerHTML = '<div class="h-32 flex items-center justify-center text-zinc-500 text-xs">Ninguno por entregar</div>';
+      }
+
+      appData.washJobs.forEach(job => {
+        const card = document.createElement('div');
+        card.className = "bg-zinc-950 border border-zinc-800 rounded-lg p-3 space-y-2 text-xs";
+        let actions = '';
+        if (job.estado === 'En espera') {
+          cEsp++;
+          actions = \`<button onclick="advanceWash('\${job.id}', 'En proceso')" class="w-full py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded font-medium">Iniciar Lavado →</button>\`;
+        } else if (job.estado === 'En proceso') {
+          cProc++;
+          actions = \`<button onclick="advanceWash('\${job.id}', 'Listo')" class="w-full py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded font-medium">Marcar Listo ✓</button>\`;
+        } else {
+          cList++;
+          actions = \`<button onclick="chargeWash('\${job.id}')" class="w-full py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold">Cobrar en Caja ($ \${job.precio})</button>\`;
+        }
+
+        card.innerHTML = \`
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-sm bg-zinc-900 border border-zinc-700 px-2 py-0.5 rounded text-zinc-100">\${job.placa}</span>
+            <span class="font-mono text-emerald-400 font-bold">$\${job.precio}</span>
+          </div>
+          <div>
+            <div class="font-semibold text-zinc-200">\${job.modelo}</div>
+            <div class="text-[11px] text-zinc-400">\${job.tipoLavado}</div>
+          </div>
+          <div class="pt-1">\${actions}</div>
+        \`;
+
+        if (job.estado === 'En espera') colEspera.appendChild(card);
+        else if (job.estado === 'En proceso') colProceso.appendChild(card);
+        else colListos.appendChild(card);
+      });
+
+      document.getElementById('count-espera').innerText = cEsp;
+      document.getElementById('count-proceso').innerText = cProc;
+      document.getElementById('count-listos').innerText = cList;
+      document.getElementById('headerQueueCount').innerText = cEsp + cProc;
+
+      const tbody = document.getElementById('washSuppliesTbody');
+      tbody.innerHTML = '';
+      appData.washSupplies.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = \`
+          <td class="py-2.5 px-3 font-mono">\${s.codigo}</td>
+          <td class="py-2.5 px-3 font-semibold text-zinc-200">\${s.nombre}</td>
+          <td class="py-2.5 px-3 text-zinc-400">\${s.tipo}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">\${s.stock} \${s.unidad}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-zinc-500">\${s.min}</td>
+          <td class="py-2.5 px-3 text-center">
+            <button onclick="adjustWashSupply('\${s.id}', 1)" class="px-2 py-0.5 bg-zinc-800 text-white rounded mr-1">+</button>
+            <button onclick="adjustWashSupply('\${s.id}', -1)" class="px-2 py-0.5 bg-zinc-800 text-white rounded">-</button>
+          </td>
+        \`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function adjustWashSupply(id, delta) {
+      const s = appData.washSupplies.find(x => x.id === id);
+      if (s) { s.stock = Math.max(0, s.stock + delta); saveData(); renderAutolavado(); }
+    }
+
+    function advanceWash(id, nextState) {
+      const job = appData.washJobs.find(j => j.id === id);
+      if (job) { job.estado = nextState; saveData(); renderAutolavado(); showToast('Vehículo movido a ' + nextState); }
+    }
+
+    function chargeWash(id) {
+      const job = appData.washJobs.find(j => j.id === id);
+      if (!job) return;
+      appData.transactions.unshift({
+        tipo: 'Ingreso',
+        concepto: \`\${job.tipoLavado} - \${job.placa}\`,
+        montoUSD: Number(job.precio),
+        metodo: 'Divisas / USD Efectivo',
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      appData.washJobs = appData.washJobs.filter(j => j.id !== id);
+      saveData();
+      renderAll();
+      showToast(\`Cobrado y entregado vehículo \${job.placa}\`, '💵');
+    }
+
+    function handleAddWash(e) {
+      e.preventDefault();
+      const placaInput = document.getElementById('washPlaca').value.trim();
+      const placa = placaInput ? placaInput.toUpperCase() : 'S/P';
+      const modelo = document.getElementById('washModelo').value;
+      const tipoLavado = document.getElementById('washPaquete').value;
+      const precio = parseFloat(document.getElementById('washPrecio').value);
+
+      appData.washJobs.unshift({ id: 'W-' + Date.now(), placa, modelo, tipoLavado, precio, estado: 'En espera' });
+      saveData();
+      renderAutolavado();
+      closeModal('modalAddWash');
+      showToast(\`Vehículo \${placa} ingresado a cola\`, '🚗');
+    }
+
+    function renderDetailing() {
+      const grid = document.getElementById('detailingGrid');
+      grid.innerHTML = appData.detailingJobs.length === 0 ? '<div class="col-span-3 p-8 text-center text-zinc-500 text-xs">Sin proyectos de detailing activos</div>' : '';
+      
+      const tbody = document.getElementById('detailingSuppliesTbody');
+      tbody.innerHTML = '';
+      appData.detailingSupplies.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = \`
+          <td class="py-2.5 px-3 font-mono">\${s.codigo}</td>
+          <td class="py-2.5 px-3 font-semibold text-zinc-200">\${s.nombre}</td>
+          <td class="py-2.5 px-3 text-zinc-400">\${s.tipo}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">\${s.stock} \${s.unidad}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-zinc-500">\${s.min}</td>
+          <td class="py-2.5 px-3 text-center">
+            <button onclick="adjustDetailingSupply('\${s.id}', 1)" class="px-2 py-0.5 bg-zinc-800 text-white rounded mr-1">+</button>
+            <button onclick="adjustDetailingSupply('\${s.id}', -1)" class="px-2 py-0.5 bg-zinc-800 text-white rounded">-</button>
+          </td>
+        \`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function adjustDetailingSupply(id, delta) {
+      const s = appData.detailingSupplies.find(x => x.id === id);
+      if (s) { s.stock = Math.max(0, s.stock + delta); saveData(); renderDetailing(); }
+    }
+
+    function toggleMobileMenu() {
+      const el = document.getElementById('mobileMenu');
+      if (el) el.classList.toggle('hidden');
+    }
+
+    function renderInventory() {
+      const tbody = document.getElementById('inventoryTableBody');
+      const mobileCards = document.getElementById('inventoryMobileCards');
+      if (tbody) tbody.innerHTML = '';
+      if (mobileCards) mobileCards.innerHTML = '';
+
+      appData.inventory.forEach(item => {
+        if (tbody) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = \`
+            <td class="py-2.5 px-3 font-mono text-zinc-300">\${item.codigo}</td>
+            <td class="py-2.5 px-3 font-semibold text-zinc-100">\${item.nombre}</td>
+            <td class="py-2.5 px-3 text-zinc-400">\${item.cat}</td>
+            <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">\${item.stock} \${item.unidad}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-zinc-500">\${item.min}</td>
+            <td class="py-2.5 px-3 text-center">
+              <button onclick="adjustStock('\${item.id}', 1)" class="px-2 py-0.5 bg-zinc-800 text-white rounded mr-1">+</button>
+              <button onclick="adjustStock('\${item.id}', -1)" class="px-2 py-0.5 bg-zinc-800 text-white rounded">-</button>
+            </td>
+          \`;
+          tbody.appendChild(tr);
+        }
+
+        if (mobileCards) {
+          const isLow = item.stock <= item.min;
+          const card = document.createElement('div');
+          card.className = \`p-3.5 rounded-xl border space-y-2.5 \${isLow ? 'bg-red-950/20 border-red-800/80' : 'bg-zinc-950/80 border-zinc-800/90'}\`;
+          card.innerHTML = \`
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 bg-zinc-900 border border-zinc-700 font-mono font-bold text-xs text-white rounded">\${item.codigo}</span>
+              <span class="text-[10px] text-zinc-400">\${item.cat}</span>
+            </div>
+            <div class="font-bold text-white text-xs">\${item.nombre}</div>
+            <div class="pt-2 border-t border-zinc-800/80 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] uppercase font-bold text-zinc-500 block">Stock Actual</span>
+                <span class="text-sm font-bold font-mono \${isLow ? 'text-red-400' : 'text-emerald-400'}">\${item.stock} \${item.unidad}</span>
+                \${isLow ? '<span class="ml-1.5 text-[9px] bg-red-600 text-white px-1 py-0.2 rounded font-bold uppercase">Reponer</span>' : ''}
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="adjustStock('\${item.id}', -1)" class="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold text-base flex items-center justify-center">-</button>
+                <button onclick="adjustStock('\${item.id}', 1)" class="w-10 h-10 rounded-lg bg-red-600 text-white font-bold text-base flex items-center justify-center shadow">+</button>
+              </div>
+            </div>
+          \`;
+          mobileCards.appendChild(card);
+        }
+      });
+
+      const mGrid = document.getElementById('mechanicsGrid');
+      if (mGrid) mGrid.innerHTML = appData.mechanicsJobs.length === 0 ? '<div class="col-span-3 p-8 text-center text-zinc-500 text-xs">Rampas de lubricación y mecánica disponibles</div>' : '';
+    }
+
+    function adjustStock(id, delta) {
+      const item = appData.inventory.find(i => i.id === id);
+      if (item) { item.stock = Math.max(0, item.stock + delta); saveData(); renderInventory(); }
+    }
+
+    function renderAutoCool() {
+      const grid = document.getElementById('autoCoolGrid');
+      grid.innerHTML = appData.autoCoolJobs.length === 0 ? '<div class="col-span-3 p-8 text-center text-zinc-500 text-xs">Bahía Auto Cool lista para diagnósticos manométricos</div>' : '';
+    }
+
+    function renderCaja() {
+      const txList = document.getElementById('txList');
+      txList.innerHTML = '';
+      let totalIng = 0, totalEg = 0;
+      let methods = { 'Divisas / USD Efectivo': 0, 'Bolívares Efectivo': 0, 'Punto de Venta': 0, 'Pago Móvil': 0, 'Zelle / Transferencia': 0 };
+
+      if (appData.transactions.length === 0) {
+        txList.innerHTML = '<div class="p-8 text-center text-zinc-500 text-xs">No hay movimientos registrados hoy en caja.</div>';
+      }
+
+      appData.transactions.forEach(t => {
+        if (t.tipo === 'Ingreso') {
+          totalIng += Number(t.montoUSD);
+          methods[t.metodo] = (methods[t.metodo] || 0) + Number(t.montoUSD);
+        } else {
+          totalEg += Number(t.montoUSD);
+        }
+
+        const row = document.createElement('div');
+        row.className = "py-2.5 flex items-center justify-between text-xs";
+        row.innerHTML = \`
+          <div><div class="font-semibold text-zinc-200">\${t.concepto}</div><div class="text-[11px] text-zinc-400">\${t.metodo} · \${t.hora}</div></div>
+          <div class="font-mono font-bold \${t.tipo === 'Ingreso' ? 'text-emerald-400' : 'text-red-400'}">\${t.tipo === 'Ingreso' ? '+' : '-'}$\${Number(t.montoUSD).toFixed(2)}</div>
+        \`;
+        txList.appendChild(row);
+      });
+
+      const net = totalIng - totalEg;
+      document.getElementById('cajaIngresos').innerText = '$' + totalIng.toFixed(2);
+      document.getElementById('cajaEgresos').innerText = '$' + totalEg.toFixed(2);
+      document.getElementById('cajaBalance').innerText = '$' + net.toFixed(2);
+      document.getElementById('headerCashTotal').innerText = '$' + net.toFixed(2);
+
+      document.getElementById('closeIngresos').innerText = '$' + totalIng.toFixed(2);
+      document.getElementById('closeEgresos').innerText = '$' + totalEg.toFixed(2);
+      document.getElementById('closeNeto').innerText = '$' + net.toFixed(2);
+      document.getElementById('mDivisas').innerText = '$' + (methods['Divisas / USD Efectivo'] || 0).toFixed(2);
+      document.getElementById('mBs').innerText = '$' + (methods['Bolívares Efectivo'] || 0).toFixed(2);
+      document.getElementById('mPunto').innerText = '$' + (methods['Punto de Venta'] || 0).toFixed(2);
+      document.getElementById('mPagoMovil').innerText = '$' + (methods['Pago Móvil'] || 0).toFixed(2);
+      document.getElementById('mZelle').innerText = '$' + (methods['Zelle / Transferencia'] || 0).toFixed(2);
+    }
+
+    function handleNewTransaction(e) {
+      e.preventDefault();
+      const tipo = document.getElementById('txTipo').value;
+      const concepto = document.getElementById('txConcepto').value;
+      const monto = parseFloat(document.getElementById('txMonto').value);
+      const metodo = document.getElementById('txMetodo').value;
+
+      appData.transactions.unshift({ tipo, concepto, montoUSD: monto, metodo, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      saveData();
+      renderCaja();
+      document.getElementById('txConcepto').value = '';
+      document.getElementById('txMonto').value = '';
+      showToast('Movimiento registrado');
+    }
+
+    function openClosureModal() { openModal('modalClosure'); }
+
+    function confirmDailyClosure() {
+      if (confirm("¿Estás seguro de congelar las operaciones de hoy y resetear la caja para la próxima jornada?")) {
+        appData.transactions = [];
+        saveData();
+        renderAll();
+        closeModal('modalClosure');
+        showToast('Jornada congelada. Caja reseteada a $0.00 para mañana.');
+      }
+    }
+
+    function openModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+    function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }
+
+    function renderAll() {
+      renderAutolavado();
+      renderDetailing();
+      renderInventory();
+      renderAutoCool();
+      renderCaja();
+    }
+
+    // Calculator functionality
+    let calcCurrent = '0';
+    let calcEquation = '';
+    let calcIsNew = true;
+
+    function openCalculatorModal() {
+      calcCurrent = '0';
+      calcEquation = '';
+      calcIsNew = true;
+      updateCalcDisplay();
+      openModal('modalCalculator');
+    }
+
+    function updateCalcDisplay() {
+      const d = document.getElementById('calcDisplay');
+      const e = document.getElementById('calcExpr');
+      if (d) d.innerText = calcCurrent;
+      if (e) e.innerText = calcEquation;
+    }
+
+    function calcNum(n) {
+      if (calcIsNew || calcCurrent === '0') {
+        calcCurrent = n;
+        calcIsNew = false;
+      } else {
+        if (calcCurrent.length < 14) calcCurrent += n;
+      }
+      updateCalcDisplay();
+    }
+
+    function calcDot() {
+      if (calcIsNew) {
+        calcCurrent = '0.';
+        calcIsNew = false;
+      } else if (!calcCurrent.includes('.')) {
+        calcCurrent += '.';
+      }
+      updateCalcDisplay();
+    }
+
+    function calcOp(op) {
+      const sym = op === '*' ? '×' : op === '/' ? '÷' : op;
+      calcEquation = calcCurrent + ' ' + sym + ' ';
+      calcIsNew = true;
+      updateCalcDisplay();
+    }
+
+    function calcClear() {
+      calcCurrent = '0';
+      calcEquation = '';
+      calcIsNew = true;
+      updateCalcDisplay();
+    }
+
+    function calcBack() {
+      if (calcCurrent.length <= 1 || calcCurrent === 'Error') {
+        calcCurrent = '0';
+      } else {
+        calcCurrent = calcCurrent.slice(0, -1);
+      }
+      updateCalcDisplay();
+    }
+
+    function calcPercent() {
+      const n = parseFloat(calcCurrent);
+      if (!isNaN(n)) {
+        calcCurrent = String(n / 100);
+        updateCalcDisplay();
+      }
+    }
+
+    function calcSign() {
+      if (calcCurrent === '0' || calcCurrent === 'Error') return;
+      calcCurrent = calcCurrent.startsWith('-') ? calcCurrent.slice(1) : '-' + calcCurrent;
+      updateCalcDisplay();
+    }
+
+    function calcEquals() {
+      if (!calcEquation) return;
+      try {
+        const fullExpr = (calcEquation + calcCurrent)
+          .replace(/×/g, '*')
+          .replace(/÷/g, '/')
+          .replace(/[^0-9+\-*/.]/g, '');
+        const res = Function('"use strict"; return (' + fullExpr + ')')();
+        if (!isFinite(res) || isNaN(res)) {
+          calcCurrent = 'Error';
+        } else {
+          calcCurrent = String(Math.round(res * 1e6) / 1e6);
+        }
+        calcEquation = '';
+        calcIsNew = true;
+        updateCalcDisplay();
+      } catch (e) {
+        calcCurrent = 'Error';
+        updateCalcDisplay();
+      }
+    }
+
+    function copyCalcResult() {
+      navigator.clipboard.writeText(calcCurrent);
+      showToast('Resultado ' + calcCurrent + ' copiado');
+    }
+
+    function applyCalcToTx() {
+      const n = parseFloat(calcCurrent);
+      if (!isNaN(n)) {
+        const montoInput = document.getElementById('txMonto');
+        if (montoInput) montoInput.value = n;
+        closeModal('modalCalculator');
+        showToast('Monto de $' + n + ' pegado en caja');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yy = String(now.getFullYear()).slice(-2);
+        const compact = `${dd}/${mm}/${yy}`;
+        const dateEl = document.getElementById('headerDateFormatted');
+        if (dateEl) dateEl.innerText = compact;
+      } catch (err) {}
+      checkLoginState();
+      applyTheme();
+      renderAll();
+    });
+  </script>
+</body>
+</html>
