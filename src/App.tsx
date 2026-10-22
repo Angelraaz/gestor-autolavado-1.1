@@ -11,7 +11,6 @@ import { MecanicaAceiteTab } from './components/MecanicaAceiteTab';
 import { AutoCoolTab } from './components/AutoCoolTab';
 import { ClientesCajaTab } from './components/ClientesCajaTab';
 import { UsuariosRolesTab } from './components/UsuariosRolesTab';
-import { ExportModal } from './components/ExportModal';
 import { DailyClosureModal } from './components/DailyClosureModal';
 import { LoginModal } from './components/LoginModal';
 import { ToastContainer, ToastMessage } from './components/Toast';
@@ -81,7 +80,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('autolavado');
 
   // Modals state
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isClosureModalOpen, setIsClosureModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -647,7 +645,6 @@ export default function App() {
             setActiveTab={setActiveTab}
             authUser={authUser}
             onLogout={handleLogout}
-            onOpenExportModal={() => setIsExportModalOpen(true)}
             queueCount={queueCount}
             cashBalance={cashBalance}
             theme={theme}
@@ -744,20 +741,14 @@ export default function App() {
           </main>
 
           {/* Footer */}
-          <footer className="border-t border-zinc-800/80 bg-zinc-950 py-4 px-6 text-center text-xs text-zinc-500">
+          <footer className="border-t border-zinc-800/80 bg-zinc-950 py-3 px-4 sm:px-6 text-center text-xs text-zinc-500">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
               <div>
                 <span className="font-semibold text-zinc-400">Portanet C.A.</span> · Sistema de Gestión Automotriz Interno
               </div>
-              <div className="flex items-center gap-4 text-[11px] text-zinc-500">
-                <span>Modo Local Storage Activo</span>
-                <span>·</span>
-                <button
-                  onClick={() => setIsExportModalOpen(true)}
-                  className="text-red-400 hover:text-red-300 font-medium underline"
-                >
-                  Exportar para Netlify / Supabase
-                </button>
+              <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                <span>Sistema Operativo en Tiempo Real</span>
               </div>
             </div>
           </footer>
@@ -770,12 +761,6 @@ export default function App() {
             commissions={commissions}
             authUser={authUser}
             onConfirmClosure={handleConfirmDailyClosure}
-          />
-
-          {/* Standalone Export & Netlify Modal */}
-          <ExportModal
-            isOpen={isExportModalOpen}
-            onClose={() => setIsExportModalOpen(false)}
           />
 
           {/* Floating Action Notifications */}
