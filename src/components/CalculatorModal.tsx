@@ -154,7 +154,7 @@ export const CalculatorModal: React.FC<CalculatorModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-white text-sm">Calculadora de Caja</h3>
-              <p className="text-[10px] text-zinc-400">Portanet C.A. · Arqueo & Operaciones</p>
+              <p className="text-[10px] text-zinc-400">SGAI · Arqueo & Operaciones</p>
             </div>
           </div>
           <button

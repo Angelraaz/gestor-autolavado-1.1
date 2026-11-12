@@ -82,7 +82,7 @@ export const StorageService = {
       session.role = (session.rolId && roleMap[session.rolId]) || 'admin';
     }
     if (!session.allowedTabs || session.allowedTabs.length === 0) {
-      session.allowedTabs = ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles'];
+      session.allowedTabs = ['autolavado', 'detailing', 'mecanica', 'clientes_caja', 'usuarios_roles'];
     }
     return session;
   },

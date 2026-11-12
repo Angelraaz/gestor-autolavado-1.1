@@ -7,8 +7,12 @@ import {
   ArrowRight,
   DollarSign,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  Eraser,
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportToExcelSheet } from '../utils/exportInventory';
 import { DetailingJob, DetailingStage, DetailingSupplyItem } from '../types';
 
 interface DetailingTabProps {
@@ -17,6 +21,7 @@ interface DetailingTabProps {
   onAddJob: (job: Omit<DetailingJob, 'id'>) => void;
   onAdvanceStage: (id: string) => void;
   onCompleteAndCharge: (job: DetailingJob) => void;
+  onDeleteJob?: (id: string) => void;
   onAdjustSupply: (id: string, delta: number) => void;
   onAddSupply: (item: Omit<DetailingSupplyItem, 'id'>) => void;
 }
@@ -24,9 +29,16 @@ interface DetailingTabProps {
 const STAGES: DetailingStage[] = [
   'Recepción e Inspección',
   'Lavado & Descontaminado (Clay Bar)',
-  'Corrección / Pulido',
+  'Corrección / Polishing',
   'Aplicación Cerámico / Sellado',
   'Curado & Inspección Final'
+];
+
+const DEFAULT_DETAILING_MEMORY = [
+  'Pulitura 1-Paso (Brillo)',
+  'Corrección de Barniz (Polishing)',
+  'Tratamiento Cerámico 9H',
+  'Detailing Interior Profundo (Vapor)'
 ];
 
 export const DetailingTab: React.FC<DetailingTabProps> = ({
@@ -35,23 +47,32 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
   onAddJob,
   onAdvanceStage,
   onCompleteAndCharge,
+  onDeleteJob,
   onAdjustSupply,
   onAddSupply
 }) => {
   const [subTab, setSubTab] = useState<'proyectos' | 'insumos'>('proyectos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSupplyModalOpen, setIsSupplyModalOpen] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<DetailingJob | null>(null);
+
+  // Detailing services memory
+  const [serviceMemory, setServiceMemory] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sgai_detailing_services_memory');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_DETAILING_MEMORY;
+  });
 
   // Form states
   const [placa, setPlaca] = useState('');
   const [modelo, setModelo] = useState('');
   const [propietario, setPropietario] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [servicio, setServicio] = useState<DetailingJob['servicio']>(
-    'Tratamiento Cerámico 9H (3 Años)'
-  );
-  const [tecnico, setTecnico] = useState('Marcos Villegas (Líder Detailing)');
-  const [precio, setPrecio] = useState(280);
+  const [servicio, setServicio] = useState('Corrección de Barniz (Polishing)');
+  const [tecnico, setTecnico] = useState('');
+  const [precio, setPrecio] = useState(150);
   const [fechaEstimadaEntrega, setFechaEstimadaEntrega] = useState('Mañana (Tarde)');
   const [observaciones, setObservaciones] = useState('');
 
@@ -66,28 +87,30 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
   const [supUnidad, setSupUnidad] = useState<DetailingSupplyItem['unidad']>('Kits Cerámicos');
   const [supPrecioRef, setSupPrecioRef] = useState(65);
 
-  const handleServiceChange = (srv: DetailingJob['servicio']) => {
-    setServicio(srv);
-    if (srv === 'Pulitura 1-Paso (Brillo)') setPrecio(90);
-    else if (srv === 'Corrección 3-Pasos (Corte + Hologramas)') setPrecio(160);
-    else if (srv === 'Tratamiento Cerámico 9H (1 Año)') setPrecio(210);
-    else if (srv === 'Tratamiento Cerámico 9H (3 Años)') setPrecio(280);
-    else if (srv === 'Detailing Interior Profundo (Vapor)') setPrecio(140);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!modelo.trim()) return;
+    if (!modelo.trim() || !servicio.trim()) return;
+
+    const trimmedService = servicio.trim();
+
+    // Save to memory if new
+    if (trimmedService && !serviceMemory.includes(trimmedService)) {
+      const updatedMem = [trimmedService, ...serviceMemory.slice(0, 9)];
+      setServiceMemory(updatedMem);
+      try {
+        localStorage.setItem('sgai_detailing_services_memory', JSON.stringify(updatedMem));
+      } catch {}
+    }
 
     onAddJob({
       placa: placa.trim() ? placa.toUpperCase().trim() : 'S/P',
       modelo: modelo.trim(),
       propietario: propietario.trim() || 'Cliente Particular',
       telefono: telefono.trim() || 'N/A',
-      servicio,
+      servicio: trimmedService,
       etapaActual: 'Recepción e Inspección',
       progreso: 20,
-      tecnico,
+      tecnico: tecnico.trim() || 'Técnico Especialista',
       fechaInicio: new Date().toISOString().split('T')[0],
       fechaEstimadaEntrega,
       precio,
@@ -99,8 +122,23 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
     setModelo('');
     setPropietario('');
     setTelefono('');
+    setTecnico('');
     setObservaciones('');
     setIsModalOpen(false);
+  };
+
+  const handleExportSuppliesExcel = () => {
+    const headers = ['Código', 'Producto / Insumo', 'Categoría', 'Stock Actual', 'Unidad', 'Stock Mínimo', 'Precio Ref ($)'];
+    const rows = supplies.map((s) => [
+      s.codigo,
+      s.nombre,
+      s.tipoProducto,
+      s.stockActual,
+      s.unidad,
+      s.stockMinimo,
+      s.precioRef
+    ]);
+    exportToExcelSheet('inventario-productos-detailing', 'Productos & Químicos de Detailing y Polishing', headers, rows);
   };
 
   const handleSupplySubmit = (e: React.FormEvent) => {
@@ -130,10 +168,10 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <span>✨ 2. Zona Detailing & Tratamientos de Pintura</span>
+            <span>✨ 2. Zona Detailing & Polishing</span>
           </h2>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Corrección microscópica de barniz, tratamientos cerámicos 9H e inventario especializado de pastas, pads y microfibras.
+            Corrección microscópica de barniz, polishing, tratamientos cerámicos 9H e inventario especializado de pastas, pads y microfibras.
           </p>
         </div>
 
@@ -176,13 +214,23 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
               <span>Nuevo Proyecto</span>
             </button>
           ) : (
-            <button
-              onClick={() => setIsSupplyModalOpen(true)}
-              className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nuevo Producto</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportSuppliesExcel}
+                className="px-3.5 py-2 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                title="Descargar inventario para Excel o Google Sheets (.csv)"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Imprimir / Exportar Excel</span>
+              </button>
+              <button
+                onClick={() => setIsSupplyModalOpen(true)}
+                className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nuevo Producto</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -315,23 +363,36 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
                         </span>
                       </div>
 
-                      {isFinished ? (
-                        <button
-                          onClick={() => onCompleteAndCharge(job)}
-                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow"
-                        >
-                          <DollarSign className="w-3.5 h-3.5" />
-                          <span>Cobrar Detailing en Caja (${job.precio})</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => onAdvanceStage(job.id)}
-                          className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 border border-zinc-700"
-                        >
-                          <span>Avanzar a Siguiente Etapa</span>
-                          <ArrowRight className="w-3 h-3 text-red-400" />
-                        </button>
-                      )}
+                      <div className="flex gap-2">
+                        {isFinished ? (
+                          <button
+                            onClick={() => onCompleteAndCharge(job)}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow"
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />
+                            <span>Cobrar en Caja (${job.precio})</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onAdvanceStage(job.id)}
+                            className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 border border-zinc-700"
+                          >
+                            <span>Avanzar Etapa</span>
+                            <ArrowRight className="w-3 h-3 text-red-400" />
+                          </button>
+                        )}
+
+                        {onDeleteJob && (
+                          <button
+                            onClick={() => setJobToDelete(job)}
+                            className="px-2.5 py-2 bg-red-950/20 hover:bg-red-950/50 border border-red-900/60 text-red-400 hover:text-red-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                            title="Corrector: Borrar por error de registro"
+                          >
+                            <Eraser className="w-3.5 h-3.5 text-red-400" />
+                            <span className="hidden sm:inline">Corrector</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -355,11 +416,18 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
           )}
 
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+            <div className="p-4 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-white">✨ Productos Especializados de Detailing</h3>
                 <p className="text-xs text-zinc-400">Pastas de corte, kits cerámicos 9H, pads de lana/espuma y microfibras de alta densidad.</p>
               </div>
+              <button
+                onClick={handleExportSuppliesExcel}
+                className="px-3 py-1.5 text-xs font-semibold bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-lg flex items-center gap-1.5 shadow transition-colors self-start sm:self-auto shrink-0"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Exportar Formato Sheet / Excel</span>
+              </button>
             </div>
 
             {/* Desktop Table View (>= md) */}
@@ -556,49 +624,57 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
-                  Tratamiento Estético Requerido
-                </label>
-                <select
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-zinc-400 uppercase">
+                    Servicio de Detailing / Polishing
+                  </label>
+                  <span className="text-[10px] text-zinc-500">Personalizado</span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Escribe el servicio (ej. Pulitura 1-Paso, Corrección de Barniz, Cerámico 9H...)"
                   value={servicio}
-                  onChange={(e) =>
-                    handleServiceChange(e.target.value as DetailingJob['servicio'])
-                  }
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none"
-                >
-                  <option value="Tratamiento Cerámico 9H (3 Años)">
-                    Tratamiento Cerámico 9H (3 Años de Protección Nano-Cerámica)
-                  </option>
-                  <option value="Tratamiento Cerámico 9H (1 Año)">
-                    Tratamiento Cerámico 9H (1 Año de Protección)
-                  </option>
-                  <option value="Corrección 3-Pasos (Corte + Hologramas)">
-                    Corrección de Pintura 3-Pasos (Corte Pesado, Pulido, Acabado Espejo)
-                  </option>
-                  <option value="Pulitura 1-Paso (Brillo)">
-                    Pulitura 1-Paso (Realce de Brillo y Cera)
-                  </option>
-                  <option value="Detailing Interior Profundo (Vapor)">
-                    Detailing Interior Profundo (Desarme, Vapor & Acondicionamiento Cuero)
-                  </option>
-                </select>
+                  onChange={(e) => setServicio(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-100 font-semibold focus:border-red-500 focus:outline-none"
+                />
+
+                {/* Memory chips */}
+                {serviceMemory.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <span className="text-[10px] text-zinc-500 font-medium">Memoria de servicios frecuentes (toca para elegir):</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {serviceMemory.map((mem) => (
+                        <button
+                          key={mem}
+                          type="button"
+                          onClick={() => setServicio(mem)}
+                          className={`text-[10px] px-2.5 py-0.5 rounded-full border transition-colors ${
+                            servicio === mem
+                              ? 'bg-red-600/30 text-red-300 border-red-500/60 font-bold'
+                              : 'bg-zinc-950 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                          }`}
+                        >
+                          + {mem}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
-                    Especialista a Cargo
+                    Especialista a Cargo (Manual)
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    placeholder="Escribe el nombre del técnico..."
                     value={tecnico}
                     onChange={(e) => setTecnico(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none"
-                  >
-                    <option value="Marcos Villegas (Líder Detailing)">
-                      Marcos Villegas (Líder Detailing)
-                    </option>
-                    <option value="Kevyn Zambrano">Kevyn Zambrano</option>
-                  </select>
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none placeholder:text-zinc-600 text-xs"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
@@ -772,6 +848,65 @@ export const DetailingTab: React.FC<DetailingTabProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Corrector: Delete Job Confirmation Modal */}
+      {jobToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-red-800/80 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-600/20 text-red-500 border border-red-600/40 flex items-center justify-center shrink-0">
+                <Eraser className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Corrector de Registro</h3>
+                <p className="text-[11px] text-zinc-400">¿Anular servicio de detailing?</p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Modelo:</span>
+                <span className="font-bold text-white">{jobToDelete.modelo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Placa:</span>
+                <span className="font-mono font-bold text-red-400">{jobToDelete.placa}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Servicio:</span>
+                <span className="text-zinc-300 truncate max-w-[170px]">{jobToDelete.servicio}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-zinc-400 leading-snug">
+              Este proyecto se anulará y eliminará de la bahía de detailing sin generar cobro en caja ni comisión.
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setJobToDelete(null)}
+                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteJob && jobToDelete) {
+                    onDeleteJob(jobToDelete.id);
+                  }
+                  setJobToDelete(null);
+                }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                <span>Sí, Borrar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

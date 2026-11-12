@@ -37,40 +37,40 @@ export const ROLE_CONFIGS: Record<SupabaseRole, RoleMetadata> = {
     role: 'admin',
     rolId: 'admin_maestro',
     titulo: 'Administrador Maestro',
-    nombreDefault: 'Administrador Portanet',
+    nombreDefault: 'Administrador SGAI',
     avatar: 'AD',
-    descripcion: 'Acceso total irrestricto: Autolavado, Detailing, Mecánica, Auto Cool, Clientes, Caja y Gestión de Roles.',
-    allowedTabs: ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles'],
+    descripcion: 'Acceso total irrestricto: Autolavado, Detailing & Polishing, Mecánica & Aceite, Clientes, Caja y Seguridad.',
+    allowedTabs: ['autolavado', 'detailing', 'mecanica', 'clientes_caja', 'usuarios_roles'],
     defaultTab: 'autolavado'
   },
   lavado: {
     role: 'lavado',
     rolId: 'sup_autolavado',
-    titulo: 'Supervisor Autolavado',
-    nombreDefault: 'Supervisor Patio de Lavado',
-    avatar: 'LV',
-    descripcion: 'Patio de lavado, registro y avance de vehículos en bahías e insumos de lavado.',
-    allowedTabs: ['autolavado'],
+    titulo: 'Supervisor Lavado & Polishing',
+    nombreDefault: 'Supervisor Bahías (Lavado & Polishing)',
+    avatar: 'LP',
+    descripcion: 'Control operativo de ambas bahías: Autolavado General y Detailing & Polishing.',
+    allowedTabs: ['autolavado', 'detailing'],
     defaultTab: 'autolavado'
   },
   detailing: {
     role: 'detailing',
     rolId: 'sup_detailing',
-    titulo: 'Supervisor Detailing',
-    nombreDefault: 'Supervisor Estética Automotriz',
-    avatar: 'DT',
-    descripcion: 'Bahías de pulitura, corrección de barniz, tratamientos cerámicos 9H y suministros de estética.',
-    allowedTabs: ['detailing'],
+    titulo: 'Supervisor Lavado & Polishing',
+    nombreDefault: 'Supervisor Bahías (Lavado & Polishing)',
+    avatar: 'LP',
+    descripcion: 'Control operativo de ambas bahías: Autolavado General y Detailing & Polishing.',
+    allowedTabs: ['autolavado', 'detailing'],
     defaultTab: 'detailing'
   },
   mecanica: {
     role: 'mecanica',
     rolId: 'sup_mecanica',
-    titulo: 'Supervisor Mecánica & Auto Cool',
+    titulo: 'Supervisor Mecánica & Aceite',
     nombreDefault: 'Supervisor Mecánica',
     avatar: 'MC',
-    descripcion: 'Mecánica rápida, lubricación, tren delantero, inventario de lubricantes y diagnóstico de A/C (Auto Cool).',
-    allowedTabs: ['mecanica', 'autocool'],
+    descripcion: 'Mecánica rápida, lubricación, tren delantero, inventario de lubricantes y tickets para clientes.',
+    allowedTabs: ['mecanica'],
     defaultTab: 'mecanica'
   },
   cajera: {
@@ -84,6 +84,28 @@ export const ROLE_CONFIGS: Record<SupabaseRole, RoleMetadata> = {
     defaultTab: 'clientes_caja'
   }
 };
+
+/**
+ * Updates a user role in Supabase user_roles table
+ */
+export async function updateUserRoleInSupabase(
+  userId: string,
+  newRole: SupabaseRole
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('user_roles')
+      .update({ role: newRole })
+      .eq('id', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error al actualizar rol en el servidor' };
+  }
+}
 
 /**
  * Normalizes any role string into a valid SupabaseRole

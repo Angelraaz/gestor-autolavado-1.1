@@ -7,9 +7,15 @@ import {
   CheckCircle,
   Search,
   DollarSign,
-  Droplet
+  Droplet,
+  Printer,
+  Eraser,
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportToExcelSheet } from '../utils/exportInventory';
 import { MechanicsJob, InventoryItem } from '../types';
+import { TicketMecanicaModal } from './TicketMecanicaModal';
 
 interface MecanicaAceiteTabProps {
   jobs: MechanicsJob[];
@@ -21,6 +27,7 @@ interface MecanicaAceiteTabProps {
   ) => void;
   onAdvanceJobStatus: (id: string, nextStatus: MechanicsJob['estado']) => void;
   onChargeJob: (job: MechanicsJob) => void;
+  onDeleteJob?: (id: string) => void;
   onAdjustStock: (id: string, delta: number) => void;
   onAddInventoryItem: (item: Omit<InventoryItem, 'id'>) => void;
 }
@@ -31,12 +38,15 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
   onAddJob,
   onAdvanceJobStatus,
   onChargeJob,
+  onDeleteJob,
   onAdjustStock,
   onAddInventoryItem
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'servicios' | 'inventario'>('servicios');
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [ticketJobToPrint, setTicketJobToPrint] = useState<MechanicsJob | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<MechanicsJob | null>(null);
 
   // Search & Filters
   const [invSearch, setInvSearch] = useState('');
@@ -50,7 +60,7 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
   const [tipoServicio, setTipoServicio] = useState<MechanicsJob['tipoServicio']>(
     'Cambio de Aceite & Filtros'
   );
-  const [mecanico, setMecanico] = useState('Alexis González');
+  const [mecanico, setMecanico] = useState('');
   const [kilometraje, setKilometraje] = useState(140000);
   const [montoTotal, setMontoTotal] = useState(85);
   const [notas, setNotas] = useState('');
@@ -87,7 +97,7 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
         tipoServicio,
         aceiteUtilizado: aceiteUtilizadoDesc,
         litrosAceite: selectedInvItem ? invDiscountQty : undefined,
-        mecanico,
+        mecanico: mecanico.trim() || 'Mecánico de Turno',
         kilometraje,
         montoTotal,
         estado: 'En rampa',
@@ -101,9 +111,25 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
     setVehiculo('');
     setCliente('');
     setTelefono('');
+    setMecanico('');
     setNotas('');
     setSelectedInvItem('');
     setIsJobModalOpen(false);
+  };
+
+  const handleExportInventoryExcel = () => {
+    const headers = ['Código / SKU', 'Descripción & Viscosidad', 'Categoría', 'Stock Actual', 'Unidad', 'Stock Mínimo', 'Precio Unitario ($)', 'Ubicación'];
+    const rows = inventory.map((i) => [
+      i.codigo,
+      i.viscosidad ? `${i.nombre} (${i.viscosidad})` : i.nombre,
+      i.categoria,
+      i.stockActual,
+      i.unidad,
+      i.stockMinimo,
+      i.precioUnitario,
+      i.ubicacion
+    ]);
+    exportToExcelSheet('inventario-lubricantes-repuestos', 'Inventario de Lubricantes y Repuestos', headers, rows);
   };
 
   const handleInventorySubmit = (e: React.FormEvent) => {
@@ -319,6 +345,29 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
                           </button>
                         )}
                       </div>
+
+                      {/* Secondary actions: Print Ticket + Corrector */}
+                      <div className="flex items-center justify-between pt-1 gap-2 border-t border-zinc-800/50">
+                        <button
+                          onClick={() => setTicketJobToPrint(job)}
+                          className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 rounded text-[11px] font-semibold transition-colors flex items-center gap-1.5"
+                          title="Imprimir comprobante para el cliente"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-red-400" />
+                          <span>Imprimir Ticket</span>
+                        </button>
+
+                        {onDeleteJob && (
+                          <button
+                            onClick={() => setJobToDelete(job)}
+                            className="px-2 py-1 bg-red-950/30 hover:bg-red-950/60 border border-red-900/60 text-red-400 hover:text-red-300 rounded text-[11px] font-semibold transition-colors flex items-center gap-1"
+                            title="Corrector: Borrar registro por equivocación"
+                          >
+                            <Eraser className="w-3.5 h-3.5 text-red-400" />
+                            <span>Corrector</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -360,13 +409,23 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
               </select>
             </div>
 
-            <button
-              onClick={() => setIsInventoryModalOpen(true)}
-              className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors flex items-center gap-1.5 shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nuevo Ítem Lubricante</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportInventoryExcel}
+                className="px-3.5 py-2 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-colors flex items-center gap-1.5 shrink-0"
+                title="Descargar inventario para Excel o Google Sheets (.csv)"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Imprimir / Exportar Excel</span>
+              </button>
+              <button
+                onClick={() => setIsInventoryModalOpen(true)}
+                className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuevo Ítem Lubricante</span>
+              </button>
+            </div>
           </div>
 
           {/* Inventory Table (Desktop) & Adaptive Vertical Cards (Mobile) */}
@@ -619,16 +678,15 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
-                    Mecánico Asignado
+                    Mecánico Asignado (Manual)
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    placeholder="Escribe el nombre del mecánico..."
                     value={mecanico}
                     onChange={(e) => setMecanico(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none"
-                  >
-                    <option value="Alexis González">Alexis González</option>
-                    <option value="Nelson Briceño">Nelson Briceño</option>
-                  </select>
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none placeholder:text-zinc-600 text-xs"
+                  />
                 </div>
               </div>
 
@@ -922,6 +980,71 @@ export const MecanicaAceiteTab: React.FC<MecanicaAceiteTabProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Modal for Client Printing */}
+      <TicketMecanicaModal
+        job={ticketJobToPrint}
+        onClose={() => setTicketJobToPrint(null)}
+      />
+
+      {/* Corrector: Delete Job Confirmation Modal */}
+      {jobToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-red-800/80 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-600/20 text-red-500 border border-red-600/40 flex items-center justify-center shrink-0">
+                <Eraser className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Corrector de Registro</h3>
+                <p className="text-[11px] text-zinc-400">¿Anular servicio por equivocación?</p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Vehículo:</span>
+                <span className="font-bold text-white">{jobToDelete.vehiculo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Placa:</span>
+                <span className="font-mono font-bold text-red-400">{jobToDelete.placa}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Servicio:</span>
+                <span className="text-zinc-300">{jobToDelete.tipoServicio}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-zinc-400 leading-snug">
+              Este vehículo se eliminará de la bahía de mecánica sin generar cobro en caja ni comisión.
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setJobToDelete(null)}
+                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteJob && jobToDelete) {
+                    onDeleteJob(jobToDelete.id);
+                  }
+                  setJobToDelete(null);
+                }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                <span>Sí, Borrar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

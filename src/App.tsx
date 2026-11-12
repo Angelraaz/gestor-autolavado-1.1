@@ -8,7 +8,6 @@ import { Header } from './components/Header';
 import { AutolavadoTab } from './components/AutolavadoTab';
 import { DetailingTab } from './components/DetailingTab';
 import { MecanicaAceiteTab } from './components/MecanicaAceiteTab';
-import { AutoCoolTab } from './components/AutoCoolTab';
 import { ClientesCajaTab } from './components/ClientesCajaTab';
 import { UsuariosRolesTab } from './components/UsuariosRolesTab';
 import { DailyClosureModal } from './components/DailyClosureModal';
@@ -20,7 +19,6 @@ import {
   DetailingJob,
   InventoryItem,
   MechanicsJob,
-  AutoCoolJob,
   Client,
   CashTransaction,
   Commission,
@@ -34,6 +32,7 @@ import {
 } from './types';
 import { ShieldAlert } from 'lucide-react';
 import { supabase, fetchUserRoleFromSupabase, buildAuthUser } from './utils/supabase';
+import { SupabaseDb } from './utils/supabaseSync';
 
 export default function App() {
   // Authentication session
@@ -62,9 +61,6 @@ export default function App() {
   const [mechanicsJobs, setMechanicsJobs] = useState<MechanicsJob[]>(() =>
     StorageService.getMechanicsJobs()
   );
-  const [autoCoolJobs, setAutoCoolJobs] = useState<AutoCoolJob[]>(() =>
-    StorageService.getAutoCoolJobs()
-  );
   const [clients, setClients] = useState<Client[]>(() => StorageService.getClients());
   const [transactions, setTransactions] = useState<CashTransaction[]>(() =>
     StorageService.getTransactions()
@@ -82,6 +78,112 @@ export default function App() {
   // Modals state
   const [isClosureModalOpen, setIsClosureModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Real-time synchronization helper (broadcasts live changes across phones/devices)
+  const broadcastLiveChange = (event: string, payload: any) => {
+    try {
+      supabase.channel('sgai_realtime_sync').send({
+        type: 'broadcast',
+        event,
+        payload
+      });
+    } catch (e) {
+      console.warn('Realtime broadcast error:', e);
+    }
+  };
+
+  // 1. Initial Load from Supabase tables (if created in SQL editor)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadRemoteData() {
+      try {
+        const [remoteWash, remoteDetailing, remoteMechanics, remoteTx] = await Promise.all([
+          SupabaseDb.fetchWashJobs(),
+          SupabaseDb.fetchDetailingJobs(),
+          SupabaseDb.fetchMechanicsJobs(),
+          SupabaseDb.fetchTransactions()
+        ]);
+
+        if (isMounted) {
+          if (remoteWash && remoteWash.length > 0) setWashJobs(remoteWash);
+          if (remoteDetailing && remoteDetailing.length > 0) setDetailingJobs(remoteDetailing);
+          if (remoteMechanics && remoteMechanics.length > 0) setMechanicsJobs(remoteMechanics);
+          if (remoteTx && remoteTx.length > 0) setTransactions(remoteTx);
+        }
+      } catch (err) {
+        console.warn('Initial server sync using local cache:', err);
+      }
+    }
+    loadRemoteData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 2. Real-time Multi-Device Synchronization (Broadcast + Postgres Changes)
+  useEffect(() => {
+    const channel = supabase
+      .channel('sgai_realtime_sync')
+      .on('broadcast', { event: 'wash_changed' }, (data: any) => {
+        const p = data?.payload;
+        if (!p) return;
+        if (p.action === 'add' && p.job) {
+          setWashJobs((prev) => [p.job, ...prev.filter((j) => j.id !== p.job.id)]);
+        } else if (p.action === 'update' && p.job) {
+          setWashJobs((prev) => prev.map((j) => (j.id === p.job.id ? p.job : j)));
+        } else if (p.action === 'delete' && p.id) {
+          setWashJobs((prev) => prev.filter((j) => j.id !== p.id));
+        }
+      })
+      .on('broadcast', { event: 'detailing_changed' }, (data: any) => {
+        const p = data?.payload;
+        if (!p) return;
+        if (p.action === 'add' && p.job) {
+          setDetailingJobs((prev) => [p.job, ...prev.filter((j) => j.id !== p.job.id)]);
+        } else if (p.action === 'update' && p.job) {
+          setDetailingJobs((prev) => prev.map((j) => (j.id === p.job.id ? p.job : j)));
+        } else if (p.action === 'delete' && p.id) {
+          setDetailingJobs((prev) => prev.filter((j) => j.id !== p.id));
+        }
+      })
+      .on('broadcast', { event: 'mechanics_changed' }, (data: any) => {
+        const p = data?.payload;
+        if (!p) return;
+        if (p.action === 'add' && p.job) {
+          setMechanicsJobs((prev) => [p.job, ...prev.filter((j) => j.id !== p.job.id)]);
+        } else if (p.action === 'update' && p.job) {
+          setMechanicsJobs((prev) => prev.map((j) => (j.id === p.job.id ? p.job : j)));
+        } else if (p.action === 'delete' && p.id) {
+          setMechanicsJobs((prev) => prev.filter((j) => j.id !== p.id));
+        }
+      })
+      .on('broadcast', { event: 'transaction_added' }, (data: any) => {
+        if (data?.payload) {
+          setTransactions((prev) => [data.payload, ...prev.filter((t) => t.id !== data.payload.id)]);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wash_jobs' }, async () => {
+        const fresh = await SupabaseDb.fetchWashJobs();
+        if (fresh) setWashJobs(fresh);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'detailing_jobs' }, async () => {
+        const fresh = await SupabaseDb.fetchDetailingJobs();
+        if (fresh) setDetailingJobs(fresh);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mechanics_jobs' }, async () => {
+        const fresh = await SupabaseDb.fetchMechanicsJobs();
+        if (fresh) setMechanicsJobs(fresh);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, async () => {
+        const fresh = await SupabaseDb.fetchTransactions();
+        if (fresh) setTransactions(fresh);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Apply theme to HTML tag
   useEffect(() => {
@@ -170,10 +272,6 @@ export default function App() {
   }, [mechanicsJobs]);
 
   useEffect(() => {
-    StorageService.saveAutoCoolJobs(autoCoolJobs);
-  }, [autoCoolJobs]);
-
-  useEffect(() => {
     StorageService.saveClients(clients);
   }, [clients]);
 
@@ -226,12 +324,22 @@ export default function App() {
       horaIngreso: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setWashJobs((prev) => [newJob, ...prev]);
-    addToast(`Vehículo ${newJob.placa} ingresado a la cola de lavado`);
+    SupabaseDb.upsertWashJob(newJob);
+    broadcastLiveChange('wash_changed', { action: 'add', job: newJob });
+    addToast(`Vehículo ${newJob.placa} ingresado a lavado`);
   };
 
   const handleAdvanceWashStatus = (id: string, nextStatus: QueueStatus) => {
     setWashJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, estado: nextStatus } : j))
+      prev.map((j) => {
+        if (j.id === id) {
+          const updated = { ...j, estado: nextStatus };
+          SupabaseDb.upsertWashJob(updated);
+          broadcastLiveChange('wash_changed', { action: 'update', job: updated });
+          return updated;
+        }
+        return j;
+      })
     );
     addToast(`Estado de lavado actualizado a: ${nextStatus}`);
   };
@@ -249,6 +357,8 @@ export default function App() {
       responsable: authUser?.nombre || 'Personal'
     };
     setTransactions((prev) => [newTx, ...prev]);
+    SupabaseDb.insertTransaction(newTx);
+    broadcastLiveChange('transaction_added', newTx);
 
     if (job.operador && job.operador !== 'Sin asignar') {
       const commAmount = Number((job.precio * 0.35).toFixed(2));
@@ -268,12 +378,16 @@ export default function App() {
     }
 
     setWashJobs((prev) => prev.filter((j) => j.id !== job.id));
+    SupabaseDb.deleteWashJob(job.id);
+    broadcastLiveChange('wash_changed', { action: 'delete', id: job.id });
     addToast(`Cobrado en Caja: $${job.precio} - Vehículo ${job.placa} entregado`, 'success');
   };
 
   const handleCancelWashJob = (id: string) => {
     setWashJobs((prev) => prev.filter((j) => j.id !== id));
-    addToast('Ingreso a cola cancelado', 'info');
+    SupabaseDb.deleteWashJob(id);
+    broadcastLiveChange('wash_changed', { action: 'delete', id });
+    addToast('Vehículo anulado de lavado por corrector', 'info');
   };
 
   const handleAdjustWashSupply = (id: string, delta: number) => {
@@ -298,13 +412,15 @@ export default function App() {
     addToast(`Insumo ${item.nombre} registrado en autolavado`);
   };
 
-  // --- DETAILING HANDLERS ---
+  // --- DETAILING & POLISHING HANDLERS ---
   const handleAddDetailingJob = (newJobData: Omit<DetailingJob, 'id'>) => {
     const newJob: DetailingJob = {
       ...newJobData,
       id: `DET-${Date.now().toString().slice(-4)}`
     };
     setDetailingJobs((prev) => [newJob, ...prev]);
+    SupabaseDb.upsertDetailingJob(newJob);
+    broadcastLiveChange('detailing_changed', { action: 'add', job: newJob });
     addToast(`Proyecto Detailing creado para ${newJob.placa}`);
   };
 
@@ -314,16 +430,19 @@ export default function App() {
         if (j.id === id) {
           const nextProg = Math.min(100, j.progreso + 25);
           let nextEtapa = j.etapaActual;
-          if (nextProg === 50) nextEtapa = 'Corrección / Pulido';
+          if (nextProg === 50) nextEtapa = 'Corrección / Polishing';
           else if (nextProg === 75) nextEtapa = 'Aplicación Cerámico / Sellado';
           else if (nextProg >= 100) nextEtapa = 'Curado & Inspección Final';
 
-          return {
+          const updated: DetailingJob = {
             ...j,
             progreso: nextProg,
             etapaActual: nextEtapa,
             estado: nextProg >= 100 ? 'Listo para entrega' : 'En proceso'
           };
+          SupabaseDb.upsertDetailingJob(updated);
+          broadcastLiveChange('detailing_changed', { action: 'update', job: updated });
+          return updated;
         }
         return j;
       })
@@ -344,6 +463,8 @@ export default function App() {
       responsable: authUser?.nombre || 'Personal'
     };
     setTransactions((prev) => [newTx, ...prev]);
+    SupabaseDb.insertTransaction(newTx);
+    broadcastLiveChange('transaction_added', newTx);
 
     const commAmount = Number((job.precio * 0.3).toFixed(2));
     const newCom: Commission = {
@@ -361,7 +482,16 @@ export default function App() {
     setCommissions((prev) => [newCom, ...prev]);
 
     setDetailingJobs((prev) => prev.filter((j) => j.id !== job.id));
+    SupabaseDb.deleteDetailingJob(job.id);
+    broadcastLiveChange('detailing_changed', { action: 'delete', id: job.id });
     addToast(`Detailing cobrado: $${job.precio} para ${job.placa}`);
+  };
+
+  const handleDeleteDetailingJob = (id: string) => {
+    setDetailingJobs((prev) => prev.filter((j) => j.id !== id));
+    SupabaseDb.deleteDetailingJob(id);
+    broadcastLiveChange('detailing_changed', { action: 'delete', id });
+    addToast('Servicio de detailing anulado por corrector', 'info');
   };
 
   const handleAdjustDetailingSupply = (id: string, delta: number) => {
@@ -416,12 +546,22 @@ export default function App() {
     }
 
     setMechanicsJobs((prev) => [newJob, ...prev]);
+    SupabaseDb.upsertMechanicsJob(newJob);
+    broadcastLiveChange('mechanics_changed', { action: 'add', job: newJob });
     addToast(`Servicio de mecánica registrado para ${newJob.placa}`);
   };
 
   const handleAdvanceMechanicsJobStatus = (id: string, nextStatus: MechanicsJob['estado']) => {
     setMechanicsJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, estado: nextStatus } : j))
+      prev.map((j) => {
+        if (j.id === id) {
+          const updated = { ...j, estado: nextStatus };
+          SupabaseDb.upsertMechanicsJob(updated);
+          broadcastLiveChange('mechanics_changed', { action: 'update', job: updated });
+          return updated;
+        }
+        return j;
+      })
     );
     addToast(`Estado de mecánica: ${nextStatus}`);
   };
@@ -439,6 +579,8 @@ export default function App() {
       responsable: authUser?.nombre || 'Personal'
     };
     setTransactions((prev) => [newTx, ...prev]);
+    SupabaseDb.insertTransaction(newTx);
+    broadcastLiveChange('transaction_added', newTx);
 
     const commAmount = Number((job.montoTotal * 0.25).toFixed(2));
     const newCom: Commission = {
@@ -456,7 +598,16 @@ export default function App() {
     setCommissions((prev) => [newCom, ...prev]);
 
     setMechanicsJobs((prev) => prev.filter((j) => j.id !== job.id));
+    SupabaseDb.deleteMechanicsJob(job.id);
+    broadcastLiveChange('mechanics_changed', { action: 'delete', id: job.id });
     addToast(`Servicio cobrado en caja: $${job.montoTotal}`);
+  };
+
+  const handleDeleteMechanicsJob = (id: string) => {
+    setMechanicsJobs((prev) => prev.filter((j) => j.id !== id));
+    SupabaseDb.deleteMechanicsJob(id);
+    broadcastLiveChange('mechanics_changed', { action: 'delete', id });
+    addToast('Servicio mecánico anulado por corrector', 'info');
   };
 
   const handleAdjustInventoryStock = (id: string, delta: number) => {
@@ -479,57 +630,6 @@ export default function App() {
     };
     setInventory((prev) => [...prev, item]);
     addToast(`Lubricante/Repuesto ${item.codigo} registrado`);
-  };
-
-  // --- AUTO COOL HANDLERS ---
-  const handleAddAutoCoolJob = (newJobData: Omit<AutoCoolJob, 'id' | 'fecha'>) => {
-    const newJob: AutoCoolJob = {
-      ...newJobData,
-      id: `COOL-${Date.now().toString().slice(-4)}`,
-      fecha: new Date().toISOString().split('T')[0]
-    };
-    setAutoCoolJobs((prev) => [newJob, ...prev]);
-    addToast(`Orden Auto Cool creada para ${newJob.placa}`);
-  };
-
-  const handleAdvanceAutoCoolStatus = (id: string, nextStatus: AutoCoolJob['estado']) => {
-    setAutoCoolJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, estado: nextStatus } : j))
-    );
-    addToast(`Estado Auto Cool: ${nextStatus}`);
-  };
-
-  const handleChargeAutoCoolJob = (job: AutoCoolJob) => {
-    const newTx: CashTransaction = {
-      id: `TRX-${Date.now().toString().slice(-4)}`,
-      tipo: 'Ingreso',
-      concepto: `${job.servicio} (${job.vehiculo})`,
-      montoUSD: job.precio,
-      metodoPago: 'Zelle / Transferencia',
-      moduloOrigen: 'Auto Cool',
-      placaVehiculo: job.placa,
-      fechaHora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      responsable: authUser?.nombre || 'Personal'
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-
-    const commAmount = Number((job.precio * 0.3).toFixed(2));
-    const newCom: Commission = {
-      id: `COM-${Date.now().toString().slice(-4)}`,
-      trabajador: job.tecnico,
-      cargo: 'Técnico Auto Cool',
-      servicioRealizado: job.servicio,
-      placa: job.placa,
-      montoServicioUSD: job.precio,
-      porcentaje: 30,
-      comisionUSD: commAmount,
-      estado: 'Pendiente',
-      fecha: new Date().toISOString().split('T')[0]
-    };
-    setCommissions((prev) => [newCom, ...prev]);
-
-    setAutoCoolJobs((prev) => prev.filter((j) => j.id !== job.id));
-    addToast(`Servicio Auto Cool cobrado: $${job.precio}`);
   };
 
   // --- CAJA & CLIENTES HANDLERS ---
@@ -634,7 +734,7 @@ export default function App() {
         <LoginModal
           onLogin={(user) => {
             setAuthUser(user);
-            addToast(`Bienvenido a Portanet C.A., ${user.nombre}`, 'success');
+            addToast(`Bienvenido a SGAI, ${user.nombre}`, 'success');
           }}
         />
       ) : (
@@ -689,6 +789,7 @@ export default function App() {
                     onCompleteAndCharge={handleChargeDetailingJob}
                     onAdjustSupply={handleAdjustDetailingSupply}
                     onAddSupply={handleAddDetailingSupply}
+                    onDeleteJob={handleDeleteDetailingJob}
                   />
                 )}
 
@@ -701,15 +802,7 @@ export default function App() {
                     onChargeJob={handleChargeMechanicsJob}
                     onAdjustStock={handleAdjustInventoryStock}
                     onAddInventoryItem={handleAddInventoryItem}
-                  />
-                )}
-
-                {activeTab === 'autocool' && (
-                  <AutoCoolTab
-                    jobs={autoCoolJobs}
-                    onAddJob={handleAddAutoCoolJob}
-                    onAdvanceStatus={handleAdvanceAutoCoolStatus}
-                    onChargeJob={handleChargeAutoCoolJob}
+                    onDeleteJob={handleDeleteMechanicsJob}
                   />
                 )}
 
@@ -741,14 +834,26 @@ export default function App() {
           </main>
 
           {/* Footer */}
-          <footer className="border-t border-zinc-800/80 bg-zinc-950 py-3 px-4 sm:px-6 text-center text-xs text-zinc-500">
-            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div>
-                <span className="font-semibold text-zinc-400">Portanet C.A.</span> · Sistema de Gestión Automotriz Interno
+          <footer className="border-t border-zinc-800/80 bg-zinc-950 py-3.5 px-4 sm:px-6 text-center text-xs text-zinc-500">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
+                <span className="font-bold text-zinc-300">SGAI</span>
+                <span className="text-zinc-600">·</span>
+                <span className="text-zinc-400">Sistema de Gestión Automotriz Interno</span>
+                <span className="text-zinc-600">·</span>
+                <a
+                  href="https://ajrc-servicios.systeme.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-red-500 hover:text-red-400 transition-colors inline-flex items-center gap-1 underline underline-offset-4"
+                  title="Visitar AJRC Servicios"
+                >
+                  AJRC Servicios (ajrc-servicios.systeme.io)
+                </a>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-zinc-500">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                <span>Sistema Operativo en Tiempo Real</span>
+                <span>Servidor Central y Dispositivos Sincronizados</span>
               </div>
             </div>
           </footer>

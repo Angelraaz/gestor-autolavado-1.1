@@ -1,6 +1,6 @@
 export type VehicleType = 'Sedán' | 'Camioneta / SUV' | 'Pick-Up / Rústico' | 'Moto' | 'Camión Ligero';
 
-export type WashType = 'Lavado Sencillo (Carrocería + Aspirado)' | 'Lavado Especial Chasis & Motor' | 'Lavado Integral VIP (+ Cera Líquida)';
+export type WashType = string;
 
 export type QueueStatus = 'En espera' | 'En proceso' | 'Listo' | 'Entregado';
 
@@ -11,7 +11,7 @@ export interface WashJob {
   modelo: string;
   color: string;
   tipoVehiculo: VehicleType;
-  tipoLavado: WashType;
+  tipoLavado: string;
   estado: QueueStatus;
   operador: string;
   horaIngreso: string;
@@ -21,7 +21,12 @@ export interface WashJob {
   clienteTelefono: string;
 }
 
-export type DetailingStage = 'Recepción e Inspección' | 'Lavado & Descontaminado (Clay Bar)' | 'Corrección / Pulido' | 'Aplicación Cerámico / Sellado' | 'Curado & Inspección Final';
+export type DetailingStage =
+  | 'Recepción e Inspección'
+  | 'Lavado & Descontaminado (Clay Bar)'
+  | 'Corrección / Polishing'
+  | 'Aplicación Cerámico / Sellado'
+  | 'Curado & Inspección Final';
 
 export interface DetailingJob {
   id: string;
@@ -29,7 +34,7 @@ export interface DetailingJob {
   modelo: string;
   propietario: string;
   telefono: string;
-  servicio: 'Pulitura 1-Paso (Brillo)' | 'Corrección 3-Pasos (Corte + Hologramas)' | 'Tratamiento Cerámico 9H (1 Año)' | 'Tratamiento Cerámico 9H (3 Años)' | 'Detailing Interior Profundo (Vapor)';
+  servicio: string;
   etapaActual: DetailingStage;
   progreso: number; // 0 to 100
   tecnico: string;

@@ -118,7 +118,7 @@ export const DailyClosureModal: React.FC<DailyClosureModalProps> = ({
                 Cierre de Jornada / Arqueo Diario
               </h3>
               <p className="text-xs text-zinc-400">
-                Portanet C.A. · {currentDateStr} · {currentTimeStr}
+                SGAI · {currentDateStr} · {currentTimeStr}
               </p>
             </div>
           </div>

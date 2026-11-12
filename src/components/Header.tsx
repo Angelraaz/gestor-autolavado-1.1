@@ -73,10 +73,10 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       id: 'detailing',
-      label: '2. Detailing & Pintura',
-      shortLabel: 'Detailing',
+      label: '2. Detailing & Polishing',
+      shortLabel: 'Detailing & Polishing',
       icon: Sparkles,
-      desc: 'Corrección, cerámico 9H y pastas'
+      desc: 'Corrección, cerámico 9H y pulitura'
     },
     {
       id: 'mecanica',
@@ -86,31 +86,24 @@ export const Header: React.FC<HeaderProps> = ({
       desc: 'Lubricación, filtros e inventario'
     },
     {
-      id: 'autocool',
-      label: '4. Zona Auto Cool',
-      shortLabel: 'Auto Cool',
-      icon: Snowflake,
-      desc: 'A/C, presiones y refrigeración'
-    },
-    {
       id: 'clientes_caja',
-      label: '5. Clientes & Caja',
+      label: '4. Clientes & Caja',
       shortLabel: 'Clientes & Caja',
       icon: Users,
       desc: 'Libro diario, clientes y cierre'
     },
     {
       id: 'usuarios_roles',
-      label: '6. Usuarios & Roles',
-      shortLabel: 'Usuarios & Roles',
+      label: '5. Seguridad & Roles',
+      shortLabel: 'Seguridad & Roles',
       icon: ShieldCheck,
-      desc: 'Permisos del sistema y accesos'
+      desc: 'Permisos del servidor y accesos'
     }
   ];
 
   // Role-Based Access Control (RBAC): filter tabs based on authenticated Supabase role
   const userRole = authUser?.role || 'admin';
-  const allowedTabsList = authUser?.allowedTabs || ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles'];
+  const allowedTabsList = authUser?.allowedTabs || ['autolavado', 'detailing', 'mecanica', 'clientes_caja', 'usuarios_roles'];
   const visibleTabs = allTabs.filter((tab) => {
     if (userRole === 'admin' || authUser?.rolId === 'admin_maestro') {
       return true;
@@ -146,14 +139,16 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex flex-col justify-center min-w-0">
-            {/* Portanet title */}
-            <span className="text-sm sm:text-base md:text-lg font-black tracking-tight text-white leading-tight truncate">
-              PORTANET C.A.
-            </span>
+            {/* SGAI title */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm sm:text-base md:text-lg font-black tracking-tight text-white leading-tight">
+                SGAI
+              </span>
+            </div>
             
-            {/* Small AJRC SERVICIOS underneath PORTANET */}
-            <span className="text-[9px] sm:text-[10px] font-bold text-red-400 tracking-wider uppercase leading-none mt-0.5">
-              AJRC SERVICIOS
+            {/* Sistema de Gestión Automotriz Interno */}
+            <span className="text-[8.5px] sm:text-[9.5px] font-semibold text-zinc-400 tracking-wide uppercase leading-none mt-0.5 truncate max-w-[180px] sm:max-w-none">
+              Sistema de Gestión Automotriz Interno
             </span>
 
             {/* Date & Military Time */}
@@ -218,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {authUser?.nombre ? authUser.nombre.split(' ')[0] : 'Usuario'}
               </div>
               <div className="text-[10px] text-zinc-400 truncate max-w-[110px]">
-                {authUser?.titulo || 'Portanet C.A.'}
+                {authUser?.titulo || 'SGAI'}
               </div>
             </div>
 
@@ -303,7 +298,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="md:hidden border-t border-zinc-800 bg-zinc-950/98 backdrop-blur-xl px-3 py-3 space-y-2.5 shadow-2xl animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-1">
             <span>Módulos Autorizados ({visibleTabs.length})</span>
-            <span className="text-zinc-400 font-mono">{authUser?.titulo || 'Portanet C.A.'}</span>
+            <span className="text-zinc-400 font-mono">{authUser?.titulo || 'SGAI'}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-1.5">

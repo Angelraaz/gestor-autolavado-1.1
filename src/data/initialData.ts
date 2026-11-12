@@ -111,7 +111,7 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       role: 'admin',
       titulo: 'Administrador Maestro',
       avatar: 'CM',
-      allowedTabs: ['autolavado', 'detailing', 'mecanica', 'autocool', 'clientes_caja', 'usuarios_roles']
+      allowedTabs: ['autolavado', 'detailing', 'mecanica', 'clientes_caja', 'usuarios_roles']
     },
     pass: 'admin123'
   },
@@ -122,9 +122,9 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       nombre: 'Jhonny Rivas',
       rolId: 'sup_autolavado',
       role: 'lavado',
-      titulo: 'Supervisor Autolavado',
+      titulo: 'Supervisor Autolavado & Detailing',
       avatar: 'JR',
-      allowedTabs: ['autolavado']
+      allowedTabs: ['autolavado', 'detailing']
     },
     pass: 'lavado123'
   },
@@ -135,9 +135,9 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       nombre: 'Marcos Villegas',
       rolId: 'sup_detailing',
       role: 'detailing',
-      titulo: 'Supervisor Detailing',
+      titulo: 'Supervisor Lavado & Detailing',
       avatar: 'MV',
-      allowedTabs: ['detailing']
+      allowedTabs: ['autolavado', 'detailing']
     },
     pass: 'detail123'
   },
@@ -150,7 +150,7 @@ export const VALID_ACCOUNTS: { user: AuthUser; pass: string }[] = [
       role: 'mecanica',
       titulo: 'Supervisor Mecánica y Aceite',
       avatar: 'AG',
-      allowedTabs: ['mecanica', 'autocool']
+      allowedTabs: ['mecanica']
     },
     pass: 'mecanica123'
   },

@@ -9,8 +9,12 @@ import {
   ArrowRight,
   Package,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Eraser,
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportToExcelSheet } from '../utils/exportInventory';
 import { WashJob, VehicleType, WashType, QueueStatus, WashSupplyItem } from '../types';
 
 interface AutolavadoTabProps {
@@ -23,6 +27,13 @@ interface AutolavadoTabProps {
   onAdjustSupply: (id: string, delta: number) => void;
   onAddSupply: (item: Omit<WashSupplyItem, 'id'>) => void;
 }
+
+const DEFAULT_WASH_MEMORY = [
+  'Lavado Sencillo (Carrocería + Aspirado)',
+  'Lavado Especial Chasis & Motor',
+  'Lavado Integral VIP (+ Cera Líquida)',
+  'Lavado Express de Carrocería'
+];
 
 export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
   jobs,
@@ -39,6 +50,16 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
   const [isSupplyModalOpen, setIsSupplyModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('todos');
+  const [jobToDelete, setJobToDelete] = useState<WashJob | null>(null);
+
+  // Wash packages memory
+  const [washMemory, setWashMemory] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sgai_wash_packages_memory');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_WASH_MEMORY;
+  });
 
   // Modal form states
   const [placa, setPlaca] = useState('');
@@ -47,7 +68,7 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
   const [color, setColor] = useState('');
   const [tipoVehiculo, setTipoVehiculo] = useState<VehicleType>('Camioneta / SUV');
   const [tipoLavado, setTipoLavado] = useState<WashType>('Lavado Integral VIP (+ Cera Líquida)');
-  const [operador, setOperador] = useState('Sin asignar');
+  const [operador, setOperador] = useState('');
   const [precio, setPrecio] = useState(25);
   const [notas, setNotas] = useState('');
   const [clienteNombre, setClienteNombre] = useState('');
@@ -84,15 +105,24 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
     e.preventDefault();
     if (!modelo.trim()) return;
 
+    const trimmedPackage = tipoLavado.trim() || 'Lavado Sencillo';
+    if (trimmedPackage && !washMemory.includes(trimmedPackage)) {
+      const updatedMem = [trimmedPackage, ...washMemory.slice(0, 9)];
+      setWashMemory(updatedMem);
+      try {
+        localStorage.setItem('sgai_wash_packages_memory', JSON.stringify(updatedMem));
+      } catch {}
+    }
+
     onAddJob({
       placa: placa.trim() ? placa.toUpperCase().trim() : 'S/P',
       marca: marca.trim() || 'General',
       modelo: modelo.trim(),
       color: color.trim() || 'No especificado',
       tipoVehiculo,
-      tipoLavado,
+      tipoLavado: trimmedPackage,
       estado: 'En espera',
-      operador,
+      operador: operador.trim() || 'Sin asignar',
       precio,
       notas: notas.trim(),
       clienteNombre: clienteNombre.trim() || 'Cliente Particular',
@@ -103,10 +133,25 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
     setMarca('');
     setModelo('');
     setColor('');
+    setOperador('');
     setNotas('');
     setClienteNombre('');
     setClienteTelefono('');
     setIsModalOpen(false);
+  };
+
+  const handleExportSuppliesExcel = () => {
+    const headers = ['Código', 'Insumo', 'Categoría', 'Stock Actual', 'Unidad', 'Stock Mínimo', 'Precio Ref ($)'];
+    const rows = supplies.map((s) => [
+      s.codigo,
+      s.nombre,
+      s.tipoInsumo,
+      s.stockActual,
+      s.unidad,
+      s.stockMinimo,
+      s.precioRef
+    ]);
+    exportToExcelSheet('inventario-insumos-autolavado', 'Insumos y Químicos de Autolavado', headers, rows);
   };
 
   const handleSupplySubmit = (e: React.FormEvent) => {
@@ -195,13 +240,23 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
               <span>Ingresar Vehículo</span>
             </button>
           ) : (
-            <button
-              onClick={() => setIsSupplyModalOpen(true)}
-              className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nuevo Insumo</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportSuppliesExcel}
+                className="px-3.5 py-2 text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                title="Descargar inventario para Excel o Google Sheets (.csv)"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Imprimir / Exportar Excel</span>
+              </button>
+              <button
+                onClick={() => setIsSupplyModalOpen(true)}
+                className="px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nuevo Insumo</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -319,11 +374,12 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
                           <ArrowRight className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={() => onCancelJob(job.id)}
-                          className="px-2 py-1.5 text-zinc-500 hover:text-red-400 text-xs rounded hover:bg-zinc-900 transition-colors"
-                          title="Cancelar"
+                          onClick={() => setJobToDelete(job)}
+                          className="px-2.5 py-1.5 bg-red-950/20 hover:bg-red-950/50 border border-red-900/60 text-red-400 hover:text-red-300 text-xs font-semibold rounded flex items-center gap-1 transition-colors"
+                          title="Corrector: Borrar por error de registro"
                         >
-                          &times;
+                          <Eraser className="w-3 h-3" />
+                          <span>Corrector</span>
                         </button>
                       </div>
                     </div>
@@ -377,13 +433,21 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
                         <span className="text-zinc-500">{job.horaIngreso}</span>
                       </div>
 
-                      <div className="pt-1">
+                      <div className="pt-1 flex gap-2">
                         <button
                           onClick={() => onAdvanceStatus(job.id, 'Listo')}
-                          className="w-full py-1.5 bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                          className="flex-1 py-1.5 bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Marcar Lavado Listo</span>
+                          <span>Marcar Listo</span>
+                        </button>
+                        <button
+                          onClick={() => setJobToDelete(job)}
+                          className="px-2.5 py-1.5 bg-red-950/20 hover:bg-red-950/50 border border-red-900/60 text-red-400 hover:text-red-300 text-xs font-semibold rounded flex items-center gap-1 transition-colors"
+                          title="Corrector: Borrar por error de registro"
+                        >
+                          <Eraser className="w-3 h-3" />
+                          <span>Corrector</span>
                         </button>
                       </div>
                     </div>
@@ -437,13 +501,21 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
                         <span className="text-zinc-500">Lavador: {job.operador}</span>
                       </div>
 
-                      <div className="pt-1">
+                      <div className="pt-1 flex gap-2">
                         <button
                           onClick={() => onChargeJob(job)}
-                          className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                          className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                         >
                           <DollarSign className="w-3.5 h-3.5" />
-                          <span>Cobrar en Caja & Entregar (${job.precio})</span>
+                          <span>Cobrar & Entregar (${job.precio})</span>
+                        </button>
+                        <button
+                          onClick={() => setJobToDelete(job)}
+                          className="px-2.5 py-2 bg-red-950/20 hover:bg-red-950/50 border border-red-900/60 text-red-400 hover:text-red-300 text-xs font-semibold rounded flex items-center gap-1 transition-colors"
+                          title="Corrector: Borrar por error de registro"
+                        >
+                          <Eraser className="w-3 h-3" />
+                          <span>Corrector</span>
                         </button>
                       </div>
                     </div>
@@ -469,11 +541,18 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
           )}
 
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+            <div className="p-4 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-white">🧴 Insumos & Químicos de Autolavado</h3>
                 <p className="text-xs text-zinc-400">Control de existencia de champú espumante, silicona para rines, ceras y ambientadores.</p>
               </div>
+              <button
+                onClick={handleExportSuppliesExcel}
+                className="px-3 py-1.5 text-xs font-semibold bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-lg flex items-center gap-1.5 shadow transition-colors self-start sm:self-auto shrink-0"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Exportar Formato Sheet / Excel</span>
+              </button>
             </div>
 
             {/* Desktop Table View (>= md) */}
@@ -701,41 +780,66 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
-                  Paquete de Lavado
-                </label>
-                <select
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-zinc-400 uppercase">
+                    Servicio / Paquete de Lavado
+                  </label>
+                  <span className="text-[10px] text-zinc-500">Personalizado</span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Escribe el servicio (ej. Lavado Sencillo, Chasis & Motor, VIP, Tapicería...)"
                   value={tipoLavado}
-                  onChange={(e) => handlePackageChange(e.target.value as WashType, tipoVehiculo)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none"
-                >
-                  <option value="Lavado Sencillo (Carrocería + Aspirado)">
-                    Lavado Sencillo (Carrocería + Aspirado)
-                  </option>
-                  <option value="Lavado Especial Chasis & Motor">
-                    Lavado Especial Chasis & Motor
-                  </option>
-                  <option value="Lavado Integral VIP (+ Cera Líquida)">
-                    Lavado Integral VIP (+ Cera Líquida)
-                  </option>
-                </select>
+                  onChange={(e) => setTipoLavado(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-100 font-semibold focus:border-red-500 focus:outline-none"
+                />
+
+                {/* Memory chips */}
+                {washMemory.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <span className="text-[10px] text-zinc-500 font-medium">Memoria de servicios frecuentes (toca para elegir):</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {washMemory.map((mem) => (
+                        <button
+                          key={mem}
+                          type="button"
+                          onClick={() => {
+                            setTipoLavado(mem);
+                            if (mem.toLowerCase().includes('motor') || mem.toLowerCase().includes('chasis')) {
+                              setPrecio(20);
+                            } else if (mem.toLowerCase().includes('vip')) {
+                              setPrecio(25);
+                            } else if (mem.toLowerCase().includes('sencillo')) {
+                              setPrecio(15);
+                            }
+                          }}
+                          className={`text-[10px] px-2.5 py-0.5 rounded-full border transition-colors ${
+                            tipoLavado === mem
+                              ? 'bg-red-600/30 text-red-300 border-red-500/60 font-bold'
+                              : 'bg-zinc-950 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                          }`}
+                        >
+                          + {mem}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
-                    Operador / Lavador
+                    Operador / Lavador (Manual)
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    placeholder="Escribe el nombre del lavador..."
                     value={operador}
                     onChange={(e) => setOperador(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none"
-                  >
-                    <option value="Sin asignar">Sin asignar (a la cola)</option>
-                    <option value="Pedro Martínez">Pedro Martínez</option>
-                    <option value="Jesús Blanco">Jesús Blanco</option>
-                    <option value="Wilmer Colmenares">Wilmer Colmenares</option>
-                  </select>
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:border-red-500 focus:outline-none placeholder:text-zinc-600 text-xs"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
@@ -897,6 +1001,65 @@ export const AutolavadoTab: React.FC<AutolavadoTabProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Corrector: Delete Job Confirmation Modal */}
+      {jobToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-red-800/80 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-600/20 text-red-500 border border-red-600/40 flex items-center justify-center shrink-0">
+                <Eraser className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Corrector de Registro</h3>
+                <p className="text-[11px] text-zinc-400">¿Anular vehículo de lavado?</p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Modelo:</span>
+                <span className="font-bold text-white">{jobToDelete.modelo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Placa:</span>
+                <span className="font-mono font-bold text-red-400">{jobToDelete.placa}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Paquete:</span>
+                <span className="text-zinc-300 truncate max-w-[170px]">{jobToDelete.tipoLavado}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-zinc-400 leading-snug">
+              Este vehículo se anulará y eliminará del patio de lavado sin generar cobro en caja ni comisiones.
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setJobToDelete(null)}
+                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (jobToDelete) {
+                    onCancelJob(jobToDelete.id);
+                  }
+                  setJobToDelete(null);
+                }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                <span>Sí, Borrar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

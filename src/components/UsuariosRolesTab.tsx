@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
-  Lock,
-  Unlock,
-  Key,
   CheckCircle2,
   AlertOctagon,
   Users,
   Database,
-  Search,
-  Plus,
   RefreshCw,
   Copy,
-  ExternalLink,
-  Check
+  Check,
+  Server,
+  UserCheck
 } from 'lucide-react';
 import { UserRole, RoleId, AuthUser, SupabaseRole } from '../types';
-import { supabase, ROLE_CONFIGS, SUPABASE_URL } from '../utils/supabase';
+import { supabase, ROLE_CONFIGS, updateUserRoleInSupabase } from '../utils/supabase';
+import { SUPABASE_SQL_SCRIPT, SUPABASE_SETUP_STEPS } from '../utils/supabaseSql';
 
 interface UsuariosRolesTabProps {
   roles: UserRole[];
@@ -26,7 +23,7 @@ interface UsuariosRolesTabProps {
   onTogglePermission: (roleId: RoleId, permissionKey: keyof UserRole['permisos']) => void;
 }
 
-interface SupabaseUserRoleRow {
+interface UserRoleRow {
   id: string;
   email: string;
   role: string;
@@ -34,25 +31,16 @@ interface SupabaseUserRoleRow {
 }
 
 export const UsuariosRolesTab: React.FC<UsuariosRolesTabProps> = ({
-  roles,
-  activeRoleId,
-  authUser,
-  onSelectRole,
-  onTogglePermission
+  authUser
 }) => {
-  const [supabaseRows, setSupabaseRows] = useState<SupabaseUserRoleRow[]>([]);
+  const [serverRows, setServerRows] = useState<UserRoleRow[]>([]);
   const [isLoadingRows, setIsLoadingRows] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
 
-  // New role assignment form
-  const [newUserId, setNewUserId] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newSelectedRole, setNewSelectedRole] = useState<SupabaseRole>('lavado');
-  const [isSavingRole, setIsSavingRole] = useState(false);
-  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
-
-  const fetchSupabaseRoles = async () => {
+  const fetchServerRoles = async () => {
     setIsLoadingRows(true);
     setQueryError(null);
     try {
@@ -64,91 +52,40 @@ export const UsuariosRolesTab: React.FC<UsuariosRolesTabProps> = ({
       if (error) {
         setQueryError(error.message);
       } else {
-        setSupabaseRows(data || []);
+        setServerRows(data || []);
       }
     } catch (err: any) {
-      setQueryError(err?.message || 'Error de conexión');
+      setQueryError(err?.message || 'Error de conexión con el servidor');
     } finally {
       setIsLoadingRows(false);
     }
   };
 
   useEffect(() => {
-    fetchSupabaseRoles();
+    fetchServerRoles();
   }, []);
 
-  const handleCreateOrUpdateRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUserEmail.trim()) return;
+  const handleRoleChangeByAdmin = async (userId: string, userEmail: string, newRole: SupabaseRole) => {
+    setUpdatingUserId(userId);
+    setUpdateFeedback(null);
 
-    setIsSavingRole(true);
-    setSaveFeedback(null);
+    const result = await updateUserRoleInSupabase(userId, newRole);
 
-    try {
-      const rowToUpsert: any = {
-        email: newUserEmail.trim().toLowerCase(),
-        role: newSelectedRole
-      };
-
-      if (newUserId.trim()) {
-        rowToUpsert.id = newUserId.trim();
-      }
-
-      const { error } = await supabase.from('user_roles').upsert(rowToUpsert);
-
-      if (error) {
-        setSaveFeedback(`Error: ${error.message}`);
-      } else {
-        setSaveFeedback(`¡Rol '${newSelectedRole}' asignado con éxito a ${newUserEmail.trim()}!`);
-        setNewUserId('');
-        setNewUserEmail('');
-        fetchSupabaseRoles();
-      }
-    } catch (err: any) {
-      setSaveFeedback(`Error: ${err?.message || 'Error al guardar'}`);
-    } finally {
-      setIsSavingRole(false);
+    if (result.success) {
+      setUpdateFeedback(`✓ Rol actualizado a '${newRole}' para ${userEmail}`);
+      setServerRows((prev) =>
+        prev.map((r) => (r.id === userId ? { ...r, role: newRole } : r))
+      );
+      setTimeout(() => setUpdateFeedback(null), 3500);
+    } else {
+      setUpdateFeedback(`Error: ${result.error || 'No se pudo actualizar el rol en el servidor'}`);
     }
+
+    setUpdatingUserId(null);
   };
 
-  const sqlSetupCode = `-- 1. Tabla de roles vinculada a Supabase Auth
-create table if not exists public.user_roles (
-  id uuid references auth.users(id) on delete cascade primary key,
-  email text not null,
-  role text not null check (role in ('admin', 'lavado', 'detailing', 'mecanica', 'cajera')),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- 2. Habilitar Row Level Security (RLS)
-alter table public.user_roles enable row level security;
-
--- 3. Política: Usuarios autenticados pueden consultar su propio rol
-create policy "Allow users to read own role"
-  on public.user_roles for select
-  using (auth.uid() = id or auth.jwt() ->> 'email' = email);
-
--- 4. Política: Administradores pueden gestionar todos los roles
-create policy "Allow admins full access to user_roles"
-  on public.user_roles for all
-  using (
-    exists (
-      select 1 from public.user_roles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
-
--- 5. Insertar roles iniciales de prueba (ejemplo)
-insert into public.user_roles (id, email, role)
-values 
-  ('00000000-0000-0000-0000-000000000001', 'admin@portanet.com.ve', 'admin'),
-  ('00000000-0000-0000-0000-000000000002', 'autolavado@portanet.com.ve', 'lavado'),
-  ('00000000-0000-0000-0000-000000000003', 'detailing@portanet.com.ve', 'detailing'),
-  ('00000000-0000-0000-0000-000000000004', 'mecanica@portanet.com.ve', 'mecanica'),
-  ('00000000-0000-0000-0000-000000000005', 'caja@portanet.com.ve', 'cajera')
-on conflict (id) do update set role = excluded.role;`;
-
   const handleCopySql = () => {
-    navigator.clipboard.writeText(sqlSetupCode);
+    navigator.clipboard.writeText(SUPABASE_SQL_SCRIPT);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2500);
   };
@@ -162,31 +99,25 @@ on conflict (id) do update set role = excluded.role;`;
     {
       role: 'admin',
       name: '👑 Admin Maestro',
-      modules: 'Autolavado, Detailing, Mecánica, Auto Cool, Clientes & Caja, Usuarios & Roles (Acceso Total)',
+      modules: 'Autolavado, Detailing & Polishing, Mecánica, Clientes & Caja, Seguridad (Acceso Total)',
       color: 'border-amber-500/50 bg-amber-950/20 text-amber-300'
     },
     {
       role: 'lavado',
-      name: '🚗 Sup. Autolavado',
-      modules: 'Únicamente Módulo 1 (Autolavado General & Insumos de Lavado)',
+      name: '🚗 Supervisor Lavado & Polishing',
+      modules: 'Maneja ambas bahías operativas: Módulo 1 (Autolavado) y Módulo 2 (Detailing & Polishing)',
       color: 'border-blue-500/50 bg-blue-950/20 text-blue-300'
     },
     {
-      role: 'detailing',
-      name: '✨ Sup. Detailing',
-      modules: 'Únicamente Módulo 2 (Detailing, Pulitura, Cerámico 9H e Insumos)',
-      color: 'border-purple-500/50 bg-purple-950/20 text-purple-300'
-    },
-    {
       role: 'mecanica',
-      name: '🛢️ Sup. Mecánica',
-      modules: 'Módulo 3 (Mecánica Ligera & Lubricantes) y Módulo 4 (Zona Auto Cool A/C)',
+      name: '🛢️ Supervisor Mecánica & Aceite',
+      modules: 'Únicamente Módulo 3 (Mecánica Ligera, Lubricantes, Inventario y Tickets de Clientes)',
       color: 'border-emerald-500/50 bg-emerald-950/20 text-emerald-300'
     },
     {
       role: 'cajera',
       name: '💵 Cajera',
-      modules: 'Únicamente Módulo 5 (Clientes, Caja Diaria, Cobros, Comisiones & Cierre)',
+      modules: 'Únicamente Módulo 4 (Clientes, Caja Diaria, Cobros, Comisiones & Cierre)',
       color: 'border-rose-500/50 bg-rose-950/20 text-rose-300'
     }
   ];
@@ -197,25 +128,24 @@ on conflict (id) do update set role = excluded.role;`;
       <div className="pb-4 border-b border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <span>🔒 6. Seguridad & Roles en Supabase (public.user_roles)</span>
+            <span>🔒 Control de Acceso y Roles en el Servidor</span>
           </h2>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Autenticación real conectada a <span className="text-white font-mono">{SUPABASE_URL}</span>.
-            Cada usuario accede exclusivamente a su área asignada según su rol verificado.
+            Seguridad basada en roles (RBAC). El Administrador Maestro puede cambiar los roles del personal directamente desde esta tabla.
           </p>
         </div>
 
         <button
-          onClick={fetchSupabaseRoles}
+          onClick={fetchServerRoles}
           disabled={isLoadingRows}
-          className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-xs font-semibold text-zinc-200 flex items-center gap-1.5 shrink-0"
+          className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-xl text-xs font-semibold text-zinc-200 flex items-center gap-1.5 shrink-0 transition-colors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoadingRows ? 'animate-spin text-red-400' : ''}`} />
-          <span>Sincronizar Supabase</span>
+          <span>Sincronizar Servidor</span>
         </button>
       </div>
 
-      {/* Active User Supabase Session Info */}
+      {/* Active User Session Info */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center font-black text-white text-lg shadow-md shadow-red-950">
@@ -231,36 +161,48 @@ on conflict (id) do update set role = excluded.role;`;
             </div>
             <div className="text-xs text-red-400 font-semibold mt-0.5">{authUser.titulo}</div>
             <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
-              Módulos asignados por Supabase: {authUser.allowedTabs.join(', ')}. Las demás secciones están ocultas del menú.
+              Módulos autorizados por el servidor: <span className="text-zinc-200 font-medium">{authUser.allowedTabs.join(', ')}</span>.
             </p>
           </div>
         </div>
 
         <div className="text-right shrink-0">
           <span className="text-[11px] text-zinc-500 uppercase font-bold block mb-1">
-            Módulos Visibles en Menú:
+            Secciones Habilitadas:
           </span>
           <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-800/60">
-            {authUser.allowedTabs.length} Secciones Habilitadas
+            {authUser.allowedTabs.length} Bahías y Módulos
           </span>
         </div>
       </div>
 
-      {/* 5 Authorized Roles Definition Card */}
+      {/* Status feedback */}
+      {updateFeedback && (
+        <div
+          className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 animate-in fade-in duration-200 ${
+            updateFeedback.startsWith('Error')
+              ? 'bg-red-950/50 border border-red-800 text-red-300'
+              : 'bg-emerald-950/50 border border-emerald-800 text-emerald-300'
+          }`}
+        >
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{updateFeedback}</span>
+        </div>
+      )}
+
+      {/* Authorized Roles Definition Card */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-red-500" />
-              <span>Reglas de Acceso Estricto por Rol en Portanet C.A.</span>
-            </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Definición de qué ve y opera cada usuario tras consultar la tabla <code className="text-red-400 bg-black/40 px-1 py-0.5 rounded">user_roles</code>:
-            </p>
-          </div>
+        <div>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-red-500" />
+            <span>Reglas de Acceso Estricto por Rol en SGAI</span>
+          </h3>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Cada usuario visualiza y opera únicamente las bahías asignadas a su cargo:
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {roleMappings.map((m) => (
             <div
               key={m.role}
@@ -269,31 +211,31 @@ on conflict (id) do update set role = excluded.role;`;
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white">{m.name}</span>
-                  <span className="text-[10px] font-mono uppercase bg-black/50 px-2 py-0.5 rounded">
-                    role = '{m.role}'
-                  </span>
                 </div>
                 <p className="text-[11px] text-zinc-300 mt-1.5 leading-snug">{m.modules}</p>
               </div>
+              <span className="text-[10px] font-mono uppercase bg-black/50 px-2 py-0.5 rounded self-start">
+                role = '{m.role}'
+              </span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Live Table: user_roles in Supabase */}
+      {/* Live Table: user_roles in Server with In-Line Admin Role Changer */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Database className="w-4 h-4 text-emerald-400" />
-              <span>Registros en la Tabla `public.user_roles` de Supabase</span>
+              <Server className="w-4 h-4 text-emerald-400" />
+              <span>Personal Registrado en la Base de Datos del Servidor</span>
             </h3>
             <p className="text-xs text-zinc-400">
-              Usuarios y roles sincronizados en la base de datos de Portanet C.A.
+              Cambia el rol de cualquier empleado desde el menú desplegable para asignarle o cambiarle de bahía.
             </p>
           </div>
           <span className="text-xs font-mono text-zinc-400 bg-zinc-950 px-2.5 py-1 rounded border border-zinc-800">
-            {supabaseRows.length} registros cargados
+            {serverRows.length} usuarios registrados
           </span>
         </div>
 
@@ -301,11 +243,11 @@ on conflict (id) do update set role = excluded.role;`;
           <div className="p-4 bg-red-950/40 border-b border-red-800 text-red-300 text-xs">
             <div className="font-bold flex items-center gap-1.5">
               <AlertOctagon className="w-4 h-4 text-red-400" />
-              <span>Aviso de consulta a Supabase:</span>
+              <span>Aviso de consulta al servidor:</span>
             </div>
             <p className="mt-1 font-mono text-[11px]">{queryError}</p>
             <p className="text-[11px] text-zinc-400 mt-1">
-              (Si la tabla aún no tiene políticas RLS de lectura anónima/autenticada, revisa el script SQL abajo para conceder SELECT a authenticated users).
+              Ejecuta el script SQL abajo para crear la tabla de roles y habilitar la sincronización en tiempo real.
             </p>
           </div>
         )}
@@ -315,42 +257,61 @@ on conflict (id) do update set role = excluded.role;`;
             <thead className="text-zinc-400 uppercase bg-zinc-950 border-b border-zinc-800">
               <tr>
                 <th className="py-3 px-4">Correo Electrónico</th>
-                <th className="py-3 px-4">Rol Asignado</th>
-                <th className="py-3 px-4">UUID / ID de Usuario</th>
+                <th className="py-3 px-4">Rol Asignado (Modificar)</th>
+                <th className="py-3 px-4">UUID en Servidor</th>
                 <th className="py-3 px-4 text-right">Permiso Efectivo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/70">
-              {supabaseRows.length === 0 ? (
+              {serverRows.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-6 px-4 text-center text-zinc-500">
                     {isLoadingRows ? (
                       <span className="flex items-center justify-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin text-red-500" />
-                        Consultando tabla user_roles en Supabase...
+                        Consultando usuarios en el servidor...
                       </span>
                     ) : (
-                      <span>No se devolvieron filas desde `user_roles`. Puedes insertar una usando el formulario o el script SQL inferior.</span>
+                      <span>No se encontraron registros en el servidor. Ejecuta el script SQL inferior para crearlos.</span>
                     )}
                   </td>
                 </tr>
               ) : (
-                supabaseRows.map((row) => (
-                  <tr key={row.id || row.email} className="hover:bg-zinc-800/40">
+                serverRows.map((row) => (
+                  <tr key={row.id || row.email} className="hover:bg-zinc-800/40 transition-colors">
                     <td className="py-3 px-4 font-mono font-medium text-zinc-200">
-                      {row.email}
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>{row.email}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded font-mono font-bold text-[11px] bg-red-950/60 text-red-300 border border-red-800/60">
-                        {row.role}
-                      </span>
+                      {/* Admin Role Selector Dropdown */}
+                      <select
+                        aria-label={`Cambiar rol para ${row.email}`}
+                        value={row.role}
+                        disabled={updatingUserId === row.id}
+                        onChange={(e) =>
+                          handleRoleChangeByAdmin(
+                            row.id,
+                            row.email,
+                            e.target.value as SupabaseRole
+                          )
+                        }
+                        className="bg-zinc-950 border border-zinc-700 hover:border-red-500 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-red-500 cursor-pointer disabled:opacity-50"
+                      >
+                        <option value="admin">👑 Admin Maestro (Acceso Total)</option>
+                        <option value="lavado">🚗 Sup. Lavado & Polishing (Ambas Bahías)</option>
+                        <option value="mecanica">🛢️ Sup. Mecánica & Aceite</option>
+                        <option value="cajera">💵 Cajera (Caja & Cobros)</option>
+                      </select>
                     </td>
                     <td className="py-3 px-4 font-mono text-[11px] text-zinc-500 truncate max-w-[200px]" title={row.id}>
                       {row.id}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <span className="text-[11px] text-zinc-400 font-medium">
-                        {ROLE_CONFIGS[row.role as SupabaseRole]?.titulo || 'Acceso Configurado'}
+                      <span className="text-[11px] text-zinc-300 font-semibold bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+                        {ROLE_CONFIGS[row.role as SupabaseRole]?.titulo || 'Acceso Asignado'}
                       </span>
                     </td>
                   </tr>
@@ -361,73 +322,33 @@ on conflict (id) do update set role = excluded.role;`;
         </div>
       </div>
 
-      {/* Manual Insert Form for Admin */}
+      {/* Step-by-Step Checklist for Supabase Realtime Setup */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-4">
         <div>
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Plus className="w-4 h-4 text-red-500" />
-            <span>Asignar o Modificar Rol en `user_roles`</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>Guía Paso a Paso: ¿Qué hace falta para que funcione todo en el Servidor?</span>
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Registra el correo y rol de un miembro del personal para que el sistema aplique sus restricciones al iniciar sesión.
+            Sigue estos 5 sencillos pasos para activar la sincronización multi-dispositivo en tiempo real:
           </p>
         </div>
 
-        {saveFeedback && (
-          <div
-            className={`p-3 rounded-xl text-xs ${
-              saveFeedback.startsWith('Error')
-                ? 'bg-red-950/50 border border-red-800 text-red-300'
-                : 'bg-emerald-950/50 border border-emerald-800 text-emerald-300'
-            }`}
-          >
-            {saveFeedback}
-          </div>
-        )}
-
-        <form onSubmit={handleCreateOrUpdateRole} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div>
-            <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">
-              Correo del Usuario
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="operador@portanet.com.ve"
-              value={newUserEmail}
-              onChange={(e) => setNewUserEmail(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-red-500 text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">
-              Rol Asignado
-            </label>
-            <select
-              value={newSelectedRole}
-              onChange={(e) => setNewSelectedRole(e.target.value as SupabaseRole)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 focus:outline-none focus:border-red-500 text-xs"
-            >
-              <option value="admin">👑 admin (Admin Maestro - Acceso Total)</option>
-              <option value="lavado">🚗 lavado (Sup. Autolavado)</option>
-              <option value="detailing">✨ detailing (Sup. Detailing)</option>
-              <option value="mecanica">🛢️ mecanica (Sup. Mecánica & Auto Cool)</option>
-              <option value="cajera">💵 cajera (Cajera)</option>
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={isSavingRole}
-              className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl font-bold text-xs shadow-md shadow-red-950/40 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isSavingRole ? 'Guardando en Supabase...' : 'Guardar en user_roles'}</span>
-            </button>
-          </div>
-        </form>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {SUPABASE_SETUP_STEPS.map((s) => (
+            <div key={s.step} className="p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-red-600/20 text-red-400 font-bold text-xs flex items-center justify-center shrink-0 border border-red-600/40">
+                  {s.step}
+                </span>
+                <h4 className="text-xs font-bold text-zinc-200">{s.title}</h4>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed pl-8">
+                {s.desc}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* SQL Snippet & Setup Helper */}
@@ -436,33 +357,33 @@ on conflict (id) do update set role = excluded.role;`;
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Database className="w-4 h-4 text-red-500" />
-              <span>Código SQL para Configurar la Tabla en Supabase SQL Editor</span>
+              <span>Script SQL para el Servidor (Copiar con 1 Clic)</span>
             </h3>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Copia y pega este script en el SQL Editor de tu proyecto en Supabase para asegurar la tabla y sus políticas RLS:
+              Copia este script completo y pégalo en el <strong>SQL Editor</strong> de tu panel en Supabase:
             </p>
           </div>
 
           <button
             onClick={handleCopySql}
-            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-xs font-semibold text-zinc-200 flex items-center gap-1.5 transition-colors shrink-0"
+            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0 shadow-md shadow-red-950/40"
           >
             {copiedSql ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">¡Copiado!</span>
+                <Check className="w-3.5 h-3.5 text-white" />
+                <span>¡Copiado con Éxito!</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Copiar SQL</span>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copiar Script SQL</span>
               </>
             )}
           </button>
         </div>
 
-        <pre className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl font-mono text-[11px] text-zinc-300 overflow-x-auto leading-relaxed max-h-60 no-scrollbar">
-          {sqlSetupCode}
+        <pre className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl font-mono text-[11px] text-zinc-300 overflow-x-auto leading-relaxed max-h-72 no-scrollbar">
+          {SUPABASE_SQL_SCRIPT}
         </pre>
       </div>
 
